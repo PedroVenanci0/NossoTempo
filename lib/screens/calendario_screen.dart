@@ -6,6 +6,7 @@ import '../services/storage_service.dart';
 import '../utils/cores_projeto.dart';
 import '../widgets/grade_milimetrada.dart';
 import 'config_screen.dart';
+import 'login_screen.dart';
 
 class CalendarioScreen extends StatefulWidget {
   const CalendarioScreen({super.key});
@@ -1023,6 +1024,11 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                             final corFundo = CoresProjeto.obterCorCategoria(ev.categoria);
                             final corBorda = CoresProjeto.obterCorBordaCategoria(ev.categoria);
                             
+                            // Determina qual foto exibir com base no tipo do evento
+                            final fotoEvento = ev.tipo == 'Compartilhado'
+                                ? LoginScreen.obterFotoCasal()
+                                : LoginScreen.obterFotoPerfil(ev.usuario);
+
                             return GestureDetector(
                               onTap: () => _adicionarOuEditarEvento(ev),
                               child: Container(
@@ -1034,24 +1040,23 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    // Ícone pequeno se for Compartilhado (Casal)
-                                    if (ev.tipo == 'Compartilhado') ...[
-                                      const Icon(
-                                        Icons.favorite, 
-                                        size: 7, 
-                                        color: Colors.redAccent
+                                    // Mini foto de perfil circular
+                                    ClipOval(
+                                      child: SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: Image.network(
+                                          fotoEvento,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => const Icon(
+                                            Icons.person,
+                                            size: 10,
+                                            color: CoresProjeto.textoClaro,
+                                          ),
+                                        ),
                                       ),
-                                      const SizedBox(width: 3),
-                                    ],
-                                    // Ícone de Estudos/Livro se for categoria Estudo
-                                    if (ev.categoria == 'Estudo') ...[
-                                      const Icon(
-                                        Icons.menu_book, 
-                                        size: 7, 
-                                        color: CoresProjeto.destaqueAtivo
-                                      ),
-                                      const SizedBox(width: 3),
-                                    ],
+                                    ),
+                                    const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
                                         ev.titulo,

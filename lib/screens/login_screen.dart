@@ -7,6 +7,23 @@ import 'calendario_screen.dart';
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
+  // Mapeia o nome do usuário para o caminho da foto de perfil
+  static String obterFotoPerfil(String usuario) {
+    switch (usuario) {
+      case 'Pedro':
+        return 'fotos_perfil/Pedro.png';
+      case 'Maria Luiza':
+        return 'fotos_perfil/maria.png';
+      default:
+        return 'fotos_perfil/pedromaria.png';
+    }
+  }
+
+  // Retorna a foto do casal (compartilhado)
+  static String obterFotoCasal() {
+    return 'fotos_perfil/pedromaria.png';
+  }
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -88,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Center(
         child: SingleChildScrollView(
           child: Container(
-            width: 380,
+            width: 420,
             padding: const EdgeInsets.all(32.0),
             decoration: BoxDecoration(
               color: CoresProjeto.fundoCaderno,
@@ -105,11 +122,15 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Cabeçalho Estilo Caderno
+                // Cabeçalho Estilo Caderno — Título em linha única
                 Center(
-                  child: Text(
-                    'CALENDARIO - NOSSOTEMPO',
-                    style: CoresProjeto.estiloTitulo(24),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'CALENDARIO — NOSSOTEMPO',
+                      style: CoresProjeto.estiloTitulo(22),
+                      maxLines: 1,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -123,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Divider(color: CoresProjeto.bordaCinza, thickness: 1.0),
                 const SizedBox(height: 24),
 
-                // Seletor de Usuário
+                // Seletor de Usuário com fotos de perfil
                 Text(
                   'QUEM ESTÁ ENTRANDO?',
                   style: CoresProjeto.estiloTextoMono(10, bold: true, cor: CoresProjeto.textoClaro),
@@ -132,11 +153,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildOpcaoUsuario('Pedro', Icons.face),
+                      child: _buildOpcaoUsuario('Pedro'),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildOpcaoUsuario('Maria Luiza', Icons.favorite_border),
+                      child: _buildOpcaoUsuario('Maria Luiza'),
                     ),
                   ],
                 ),
@@ -210,8 +231,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildOpcaoUsuario(String nome, IconData icone) {
+  Widget _buildOpcaoUsuario(String nome) {
     final selecionado = _usuarioSelecionado == nome;
+    final fotoPath = LoginScreen.obterFotoPerfil(nome);
+
     return InkWell(
       onTap: () {
         setState(() {
@@ -230,19 +253,38 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: Column(
           children: [
-            Icon(
-              icone,
-              color: selecionado ? CoresProjeto.destaqueTexto : CoresProjeto.textoEscuro,
-              size: 24,
+            // Foto de perfil circular
+            ClipOval(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selecionado ? CoresProjeto.destaqueTexto : CoresProjeto.bordaCinza,
+                    width: 2.0,
+                  ),
+                ),
+                child: Image.network(
+                  fotoPath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    nome == 'Pedro' ? Icons.face : Icons.favorite_border,
+                    color: selecionado ? CoresProjeto.destaqueTexto : CoresProjeto.textoEscuro,
+                    size: 28,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               nome.toUpperCase(),
               style: CoresProjeto.estiloTextoMono(
-                12, 
+                11, 
                 bold: selecionado, 
                 cor: selecionado ? CoresProjeto.destaqueTexto : CoresProjeto.textoEscuro
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
