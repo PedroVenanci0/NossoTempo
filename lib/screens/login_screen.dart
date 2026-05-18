@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Cabeçalho Estilo Caderno
                 Center(
                   child: Text(
-                    'NOSSO ESPAÇO',
+                    'CALENDARIO - NOSSOTEMPO',
                     style: CoresProjeto.estiloTitulo(24),
                   ),
                 ),

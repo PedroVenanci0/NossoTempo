@@ -13,7 +13,7 @@ class NossoCalendarioApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nosso Espaço - Planejamento',
+      title: 'Calendario - NossoTempo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
