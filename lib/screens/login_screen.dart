@@ -154,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: CoresProjeto.estiloTextoMono(14),
                   cursorColor: CoresProjeto.textoEscuro,
                   decoration: InputDecoration(
-                    hintText: 'Senha (padrão: amareloazul)',
+                    hintText: 'Digite sua senha',
                     hintStyle: CoresProjeto.estiloTextoMono(12, cor: CoresProjeto.textoClaro.withOpacity(0.6)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     enabledBorder: const OutlineInputBorder(

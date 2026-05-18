@@ -689,12 +689,6 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                   style: CoresProjeto.estiloTextoMono(9, cor: CoresProjeto.textoClaro),
                 ),
                 const SizedBox(width: 16),
-              ] else ...[
-                Text(
-                  'MODO OFFLINE (LOCAL)'.toUpperCase(),
-                  style: CoresProjeto.estiloTextoMono(9, cor: Colors.orangeAccent, bold: true),
-                ),
-                const SizedBox(width: 16),
               ],
 
               // Botão Configurações
