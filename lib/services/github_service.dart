@@ -8,6 +8,24 @@ class GithubService {
   // Armazena o sha do arquivo retornado pelo GitHub para fazer a atualização corretamente
   String? _ultimoSha;
 
+  // Sanitiza o campo de repositório para extrair apenas 'dono/repo'
+  // Aceita formatos como:
+  //   - 'PedroVenanci0/NossoTempoDataSet' (já correto)
+  //   - 'https://github.com/PedroVenanci0/NossoTempoDataSet'
+  //   - 'https://github.com/PedroVenanci0/NossoTempoDataSet.git'
+  //   - 'github.com/PedroVenanci0/NossoTempoDataSet'
+  String _sanitizarRepo(String repo) {
+    String limpo = repo.trim();
+    // Remove protocolo e domínio
+    limpo = limpo.replaceAll(RegExp(r'^https?://'), '');
+    limpo = limpo.replaceAll(RegExp(r'^github\.com/'), '');
+    // Remove sufixo .git
+    limpo = limpo.replaceAll(RegExp(r'\.git$'), '');
+    // Remove barras extras no final
+    limpo = limpo.replaceAll(RegExp(r'/+$'), '');
+    return limpo;
+  }
+
   // Carrega os eventos direto do repositório do GitHub
   // Retorna um Map contendo {'sucesso': bool, 'eventos': List<EventoModel>, 'mensagem': String}
   Future<Map<String, dynamic>> carregarDoGithub(ConfigModel config) async {
@@ -19,8 +37,9 @@ class GithubService {
       };
     }
 
+    final repo = _sanitizarRepo(config.githubRepo);
     final url = Uri.parse(
-      'https://api.github.com/repos/${config.githubRepo}/contents/${config.caminhoArquivo}?ref=${config.ramo}'
+      'https://api.github.com/repos/$repo/contents/${config.caminhoArquivo}?ref=${config.ramo}'
     );
 
     try {
@@ -87,8 +106,9 @@ class GithubService {
       await carregarDoGithub(config);
     }
 
+    final repo = _sanitizarRepo(config.githubRepo);
     final url = Uri.parse(
-      'https://api.github.com/repos/${config.githubRepo}/contents/${config.caminhoArquivo}'
+      'https://api.github.com/repos/$repo/contents/${config.caminhoArquivo}'
     );
 
     String csvConteudo = CsvHelper.converterParaCsv(eventos);
@@ -146,3 +166,4 @@ class GithubService {
     }
   }
 }
+
