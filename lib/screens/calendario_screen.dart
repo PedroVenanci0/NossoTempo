@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/config_model.dart';
 import '../models/evento_model.dart';
@@ -24,7 +25,10 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   
   bool _carregando = true;
   bool _sincronizando = false;
+  bool _sincronizandoSilencioso = false;
   String _mensagemSinc = '';
+  
+  Timer? _timerSincronizacao;
   
   DateTime _dataSelecionada = DateTime.now();
   final List<String> _mesesAbreviados = [
@@ -42,6 +46,21 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   void initState() {
     super.initState();
     _inicializarDados();
+    
+    // Configura sincronização automática periódica a cada 30 segundos
+    _timerSincronizacao = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (_config.estaConfiguradoGithub && !_sincronizando && !_sincronizandoSilencioso) {
+        _sincronizarComGithubSilencioso();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timerSincronizacao?.cancel();
+    _notasController.dispose();
+    _novaTarefaController.dispose();
+    super.dispose();
   }
 
   Future<void> _inicializarDados() async {
@@ -50,7 +69,6 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
     
     setState(() {
       _config = config;
-      _notasController.text = config.notasMes;
     });
 
     // 2. Carrega eventos do cache local inicialmente para abrir rápido
@@ -59,6 +77,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       _eventos = eventosLocais;
       _carregando = false;
     });
+
+    _atualizarNotasController();
 
     // 3. Sincroniza com o GitHub se configurado
     if (_config.estaConfiguradoGithub) {
@@ -89,6 +109,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
         _sincronizando = false;
         _mensagemSinc = resultado['mensagem'];
       });
+      
+      _atualizarNotasController();
     } else {
       setState(() {
         _sincronizando = false;
@@ -139,18 +161,143 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
     }
   }
 
-  // Notas do mês: salva quando o usuário sai do campo ou clica fora
-  Future<void> _salvarNotas() async {
-    final novasNotas = _notasController.text;
-    if (novasNotas != _config.notasMes) {
-      final novaConfig = _config.copyWith(notasMes: novasNotas);
-      await _storageService.salvarConfig(novaConfig);
-      setState(() {
-        _config = novaConfig;
-      });
-      // Sincroniza salvando o arquivo CSV (como não temos outro arquivo, podemos fazer um commit simples ou salvar as notas no próprio fluxo)
-      // Como o CSV guarda apenas eventos, vamos garantir que a alteração da nota seja refletida localmente e, no futuro, sincronizada nas configurações.
+  // Obtém o texto da nota do mês/ano selecionados
+  String _obterNotasDoMes() {
+    final eventoNota = _eventos.firstWhere(
+      (e) => e.categoria == 'Nota' &&
+             e.data.year == _dataSelecionada.year &&
+             e.data.month == _dataSelecionada.month,
+      orElse: () => EventoModel(
+        id: '',
+        usuario: '',
+        data: DateTime.now(),
+        titulo: '',
+        descricao: '',
+        tipo: 'Compartilhado',
+        categoria: 'Nota',
+        corHex: '',
+      ),
+    );
+    return eventoNota.titulo;
+  }
+
+  // Atualiza o TextEditingController de notas
+  void _atualizarNotasController() {
+    final notas = _obterNotasDoMes();
+    if (_notasController.text != notas) {
+      _notasController.text = notas;
     }
+  }
+
+  // Notas do mês: salva no CSV e sincroniza com o GitHub
+  Future<void> _salvarNotas() async {
+    final novasNotas = _notasController.text.trim();
+    final notasAntigas = _obterNotasDoMes();
+
+    if (novasNotas == notasAntigas) return;
+    
+    // Procura se já existe uma nota para o mês/ano
+    final index = _eventos.indexWhere(
+      (e) => e.categoria == 'Nota' &&
+             e.data.year == _dataSelecionada.year &&
+             e.data.month == _dataSelecionada.month,
+    );
+
+    if (index != -1) {
+      if (novasNotas.isEmpty) {
+        setState(() {
+          _eventos.removeAt(index);
+        });
+      } else {
+        setState(() {
+          _eventos[index] = _eventos[index].copyWith(
+            titulo: novasNotas,
+            usuario: _config.usuarioAtivo,
+          );
+        });
+      }
+      await _salvarDadosGerais();
+    } else if (novasNotas.isNotEmpty) {
+      final novaNota = EventoModel(
+        id: 'nota_${_dataSelecionada.year}_${_dataSelecionada.month}',
+        usuario: _config.usuarioAtivo,
+        data: DateTime(_dataSelecionada.year, _dataSelecionada.month, 1),
+        titulo: novasNotas,
+        descricao: '',
+        tipo: 'Compartilhado',
+        categoria: 'Nota',
+        corHex: '#EAEAEA',
+      );
+      setState(() {
+        _eventos.add(novaNota);
+      });
+      await _salvarDadosGerais();
+    }
+  }
+
+  // Sincronização periódica em segundo plano
+  Future<void> _sincronizarComGithubSilencioso() async {
+    if (_sincronizando || _sincronizandoSilencioso) return;
+
+    setState(() {
+      _sincronizandoSilencioso = true;
+    });
+
+    final resultado = await _githubService.carregarDoGithub(_config);
+
+    if (!mounted) return;
+
+    if (resultado['sucesso'] == true) {
+      final List<EventoModel> eventosGithub = resultado['eventos'];
+      
+      // Compara se houve alguma mudança nos eventos salvos
+      bool mudou = _eventos.length != eventosGithub.length;
+      if (!mudou) {
+        for (var evG in eventosGithub) {
+          final evL = _eventos.firstWhere(
+            (e) => e.id == evG.id,
+            orElse: () => EventoModel(
+              id: '',
+              usuario: '',
+              data: DateTime.now(),
+              titulo: '',
+              descricao: '',
+              tipo: '',
+              categoria: '',
+              corHex: '',
+            ),
+          );
+          if (evL.id.isEmpty || 
+              evL.titulo != evG.titulo || 
+              evL.descricao != evG.descricao || 
+              evL.concluido != evG.concluido ||
+              evL.categoria != evG.categoria ||
+              evL.tipo != evG.tipo ||
+              evL.data != evG.data) {
+            mudou = true;
+            break;
+          }
+        }
+      }
+
+      if (mudou) {
+        await _storageService.salvarEventosLocais(eventosGithub);
+        setState(() {
+          _eventos = eventosGithub;
+          _mensagemSinc = 'Sincronizado';
+        });
+        
+        // Só atualiza o texto se o usuário não estiver focado digitando
+        final focus = FocusScope.of(context);
+        if (!focus.hasFocus) {
+          _atualizarNotasController();
+        }
+      }
+    }
+
+    setState(() {
+      _sincronizandoSilencioso = false;
+    });
   }
 
   // --- Lógica de Geração do Calendário ---
@@ -723,12 +870,12 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
         children: List.generate(12, (index) {
           final selecionado = _dataSelecionada.month == (index + 1);
           return InkWell(
-            onTap: () {
+            onTap: () async {
+              await _salvarNotas();
               setState(() {
                 _dataSelecionada = DateTime(_dataSelecionada.year, index + 1, 1);
               });
-              // Foca as notas nas notas locais e atualiza
-              _salvarNotas();
+              _atualizarNotasController();
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
