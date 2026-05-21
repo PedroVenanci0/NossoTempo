@@ -8,6 +8,8 @@ class EventoModel {
   final String categoria; // 'Encontro', 'Estudo', 'Trabalho', 'Viagem', 'Especial', 'Outros'
   final String corHex; // Cor em formato hexadecimal (ex: #F3C5C5)
   final bool concluido; // Status para tarefas ou checklist
+  final String? horaInicio; // Formato HH:mm
+  final String? horaFim; // Formato HH:mm
 
   EventoModel({
     required this.id,
@@ -19,6 +21,8 @@ class EventoModel {
     required this.categoria,
     required this.corHex,
     this.concluido = false,
+    this.horaInicio,
+    this.horaFim,
   });
 
   // Converte um EventoModel em uma linha de CSV
@@ -34,6 +38,8 @@ class EventoModel {
       categoria,
       corHex,
       concluido.toString(),
+      horaInicio ?? '',
+      horaFim ?? '',
     ];
   }
 
@@ -49,6 +55,8 @@ class EventoModel {
       categoria: campos[6],
       corHex: campos[7],
       concluido: campos.length > 8 ? campos[8].toLowerCase() == 'true' : false,
+      horaInicio: campos.length > 9 && campos[9].isNotEmpty ? campos[9] : null,
+      horaFim: campos.length > 10 && campos[10].isNotEmpty ? campos[10] : null,
     );
   }
 
@@ -62,6 +70,10 @@ class EventoModel {
     String? categoria,
     String? corHex,
     bool? concluido,
+    String? horaInicio,
+    String? horaFim,
+    bool resetHoraInicio = false,
+    bool resetHoraFim = false,
   }) {
     return EventoModel(
       id: id ?? this.id,
@@ -73,6 +85,8 @@ class EventoModel {
       categoria: categoria ?? this.categoria,
       corHex: corHex ?? this.corHex,
       concluido: concluido ?? this.concluido,
+      horaInicio: resetHoraInicio ? null : (horaInicio ?? this.horaInicio),
+      horaFim: resetHoraFim ? null : (horaFim ?? this.horaFim),
     );
   }
 

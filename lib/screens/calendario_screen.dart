@@ -273,7 +273,9 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
               evL.concluido != evG.concluido ||
               evL.categoria != evG.categoria ||
               evL.tipo != evG.tipo ||
-              evL.data != evG.data) {
+              evL.data != evG.data ||
+              evL.horaInicio != evG.horaInicio ||
+              evL.horaFim != evG.horaFim) {
             mudou = true;
             break;
           }
@@ -339,7 +341,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
 
   // Filtra eventos do dia que o usuário logado pode ver
   List<EventoModel> _obterEventosDoDia(DateTime data) {
-    return _eventos.where((e) {
+    final evs = _eventos.where((e) {
       // Ignora tarefas rápidas (que têm a categoria 'Tarefa') na exibição do grid central
       if (e.categoria == 'Tarefa') return false;
 
@@ -351,6 +353,17 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       if (e.tipo == 'Compartilhado') return true;
       return e.usuario == _config.usuarioAtivo;
     }).toList();
+
+    evs.sort((a, b) {
+      if (a.horaInicio != null && b.horaInicio == null) return -1;
+      if (a.horaInicio == null && b.horaInicio != null) return 1;
+      if (a.horaInicio != null && b.horaInicio != null) {
+        return a.horaInicio!.compareTo(b.horaInicio!);
+      }
+      return 0;
+    });
+
+    return evs;
   }
 
   // Filtra as tarefas do mês selecionado
@@ -370,6 +383,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
     DateTime dataSel = eventoExistente?.data ?? dataInicial ?? DateTime.now();
     String tipoSel = eventoExistente?.tipo ?? 'Compartilhado';
     String catSel = eventoExistente?.categoria ?? 'Encontro';
+    String? horaInicioSel = eventoExistente?.horaInicio;
+    String? horaFimSel = eventoExistente?.horaFim;
     
     final categoriasDisp = ['Encontro', 'Estudo', 'Trabalho', 'Viagem', 'Hobby', 'Especial', 'Outros'];
     final tiposDisp = ['Compartilhado', 'Privado'];
@@ -473,6 +488,169 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                             ],
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Horários (Início e Fim)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'INÍCIO',
+                                  style: CoresProjeto.estiloTextoMono(9, bold: true, cor: CoresProjeto.textoClaro),
+                                ),
+                                const SizedBox(height: 4),
+                                InkWell(
+                                  onTap: () async {
+                                    final initialTime = horaInicioSel != null
+                                        ? TimeOfDay(
+                                            hour: int.parse(horaInicioSel!.split(':')[0]),
+                                            minute: int.parse(horaInicioSel!.split(':')[1]),
+                                          )
+                                        : const TimeOfDay(hour: 9, minute: 0);
+                                    final time = await showTimePicker(
+                                      context: context,
+                                      initialTime: initialTime,
+                                      builder: (context, child) {
+                                        return Theme(
+                                          data: Theme.of(context).copyWith(
+                                            colorScheme: const ColorScheme.light(
+                                              primary: CoresProjeto.destaqueAtivo,
+                                              onPrimary: CoresProjeto.destaqueTexto,
+                                              onSurface: CoresProjeto.textoEscuro,
+                                            ),
+                                          ),
+                                          child: child!,
+                                        );
+                                      },
+                                    );
+                                    if (time != null) {
+                                      setDialogState(() {
+                                        horaInicioSel = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: CoresProjeto.bordaCinza, width: 1.0),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          horaInicioSel ?? '--:--',
+                                          style: CoresProjeto.estiloTextoMono(12),
+                                        ),
+                                        if (horaInicioSel != null)
+                                          GestureDetector(
+                                            onTap: () {
+                                              setDialogState(() {
+                                                horaInicioSel = null;
+                                                horaFimSel = null;
+                                              });
+                                            },
+                                            child: const Icon(Icons.clear, color: Colors.redAccent, size: 14),
+                                          )
+                                        else
+                                          const Icon(Icons.access_time, color: CoresProjeto.textoEscuro, size: 14),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'FIM',
+                                  style: CoresProjeto.estiloTextoMono(9, bold: true, cor: CoresProjeto.textoClaro),
+                                ),
+                                const SizedBox(height: 4),
+                                InkWell(
+                                  onTap: horaInicioSel == null
+                                      ? null
+                                      : () async {
+                                          final initialTime = horaFimSel != null
+                                              ? TimeOfDay(
+                                                  hour: int.parse(horaFimSel!.split(':')[0]),
+                                                  minute: int.parse(horaFimSel!.split(':')[1]),
+                                                )
+                                              : TimeOfDay(
+                                                  hour: (int.parse(horaInicioSel!.split(':')[0]) + 1) % 24,
+                                                  minute: int.parse(horaInicioSel!.split(':')[1]),
+                                                );
+                                          final time = await showTimePicker(
+                                            context: context,
+                                            initialTime: initialTime,
+                                            builder: (context, child) {
+                                              return Theme(
+                                                data: Theme.of(context).copyWith(
+                                                  colorScheme: const ColorScheme.light(
+                                                    primary: CoresProjeto.destaqueAtivo,
+                                                    onPrimary: CoresProjeto.destaqueTexto,
+                                                    onSurface: CoresProjeto.textoEscuro,
+                                                  ),
+                                                ),
+                                                child: child!,
+                                              );
+                                            },
+                                          );
+                                          if (time != null) {
+                                            setDialogState(() {
+                                              horaFimSel = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+                                            });
+                                          }
+                                        },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: horaInicioSel == null ? Colors.black.withOpacity(0.03) : Colors.transparent,
+                                      border: Border.all(
+                                        color: horaInicioSel == null ? CoresProjeto.bordaCinza.withOpacity(0.5) : CoresProjeto.bordaCinza,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          horaFimSel ?? '--:--',
+                                          style: CoresProjeto.estiloTextoMono(
+                                            12,
+                                            cor: horaInicioSel == null ? CoresProjeto.textoClaro.withOpacity(0.5) : CoresProjeto.textoEscuro,
+                                          ),
+                                        ),
+                                        if (horaFimSel != null)
+                                          GestureDetector(
+                                            onTap: () {
+                                              setDialogState(() {
+                                                horaFimSel = null;
+                                              });
+                                            },
+                                            child: const Icon(Icons.clear, color: Colors.redAccent, size: 14),
+                                          )
+                                        else
+                                          Icon(
+                                            Icons.access_time,
+                                            color: horaInicioSel == null ? CoresProjeto.textoClaro.withOpacity(0.3) : CoresProjeto.textoEscuro,
+                                            size: 14,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
 
@@ -598,6 +776,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                         categoria: catSel,
                         corHex: _obterHexDaCategoria(catSel),
                         concluido: eventoExistente?.concluido ?? false,
+                        horaInicio: horaInicioSel,
+                        horaFim: horaFimSel,
                       );
 
                       setState(() {
@@ -1206,7 +1386,9 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
-                                        ev.titulo,
+                                        ev.horaInicio != null
+                                            ? '${ev.horaInicio} ${ev.titulo}'
+                                            : ev.titulo,
                                         style: CoresProjeto.estiloTextoMono(
                                           8, 
                                           bold: true, 

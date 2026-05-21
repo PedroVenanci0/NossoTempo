@@ -3,7 +3,7 @@ import '../models/evento_model.dart';
 
 class CsvHelper {
   // Cabeçalho padrão do CSV
-  static const String cabecalho = 'id,usuario,data,titulo,descricao,tipo,categoria,corHex,concluido';
+  static const String cabecalho = 'id,usuario,data,titulo,descricao,tipo,categoria,corHex,concluido,horaInicio,horaFim';
 
   // Transforma uma lista de eventos em uma string CSV completa
   static String converterParaCsv(List<EventoModel> eventos) {
