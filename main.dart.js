@@ -44227,23 +44227,24 @@ return A.K($async$kD,r)},
 Sp(){return J.aAI(this.r,new A.alk(this),new A.all()).d},
 y0(){var s=this.Sp(),r=this.ay
 if(r.a.a!==s)r.scf(s)},
-qt(){var s=0,r=A.L(t.H),q,p=this,o,n,m
+qt(){var s=0,r=A.L(t.H),q,p=this,o,n,m,l
 var $async$qt=A.M(function(a,b){if(a===1)return A.I(b,r)
-for(;;)switch(s){case 0:m=B.c.eT(p.ay.a.a)
-if(m===p.Sp()){s=1
+for(;;)switch(s){case 0:l=B.c.eT(p.ay.a.a)
+if(l===p.Sp()){s=1
 break}o=J.awZ(p.r,new A.alp(p))
 s=o!==-1?3:5
 break
-case 3:if(m.length===0)p.X(new A.alq(p,o))
-else p.X(new A.alr(p,o,m))
+case 3:if(l.length===0)p.X(new A.alq(p,o))
+else p.X(new A.alr(p,o,l))
 s=6
 return A.H(p.kD(),$async$qt)
 case 6:s=4
 break
-case 5:s=m.length!==0?7:8
+case 5:s=l.length!==0?7:8
 break
-case 7:n=p.as
-p.X(new A.als(p,new A.ef("nota_"+A.aN(n)+"_"+A.b1(n),p.f.e,A.bM(A.aN(n),A.b1(n),1),m,"","Compartilhado","Nota","#EAEAEA",!1,null,null)))
+case 7:n=p.f.e
+m=p.as
+p.X(new A.als(p,new A.ef("nota_"+n+"_"+A.aN(m)+"_"+A.b1(m),n,A.bM(A.aN(m),A.b1(m),1),l,"","Privado","Nota","#EAEAEA",!1,null,null)))
 s=9
 return A.H(p.kD(),$async$qt)
 case 9:case 8:case 4:case 1:return A.J(q,r)}})
@@ -44346,7 +44347,7 @@ if(l.length===0){s=1
 break}o=B.e.k(Date.now())
 n=p.f
 m=p.as
-p.X(new A.akW(p,new A.ef(o,n.e,A.bM(A.aN(m),A.b1(m),1),l,"","Compartilhado","Tarefa","#CCCCCC",!1,null,null)))
+p.X(new A.akW(p,new A.ef(o,n.e,A.bM(A.aN(m),A.b1(m),1),l,"","Privado","Tarefa","#CCCCCC",!1,null,null)))
 s=3
 return A.H(p.kD(),$async$tV)
 case 3:case 1:return A.J(q,r)}})
@@ -44440,21 +44441,21 @@ s.x=!1
 s.z=this.b.i(0,"mensagem")},
 $S:0}
 A.alk.prototype={
-$1(a){var s,r
-if(a.r==="Nota"){s=a.c
-r=this.a.as
-s=A.aN(s)===A.aN(r)&&A.b1(s)===A.b1(r)}else s=!1
-return s},
+$1(a){var s,r=!1
+if(a.r==="Nota"){s=this.a
+if(a.b===s.f.e){r=a.c
+s=s.as
+r=A.aN(r)===A.aN(s)&&A.b1(r)===A.b1(s)}}return r},
 $S:38}
 A.all.prototype={
-$0(){return new A.ef("","",new A.cz(Date.now(),0,!1),"","","Compartilhado","Nota","",!1,null,null)},
+$0(){return new A.ef("","",new A.cz(Date.now(),0,!1),"","","Privado","Nota","",!1,null,null)},
 $S:220}
 A.alp.prototype={
-$1(a){var s,r
-if(a.r==="Nota"){s=a.c
-r=this.a.as
-s=A.aN(s)===A.aN(r)&&A.b1(s)===A.b1(r)}else s=!1
-return s},
+$1(a){var s,r=!1
+if(a.r==="Nota"){s=this.a
+if(a.b===s.f.e){r=a.c
+s=s.as
+r=A.aN(r)===A.aN(s)&&A.b1(r)===A.b1(s)}}return r},
 $S:38}
 A.alq.prototype={
 $0(){J.aAL(this.a.r,this.b)},
@@ -44501,11 +44502,11 @@ r.toString
 return B.c.b2(s,r)}return 0},
 $S:260}
 A.alm.prototype={
-$1(a){var s,r
-if(a.r==="Tarefa"){s=a.c
-r=this.a.as
-s=A.aN(s)===A.aN(r)&&A.b1(s)===A.b1(r)}else s=!1
-return s},
+$1(a){var s,r=!1
+if(a.r==="Tarefa"){s=this.a
+if(a.b===s.f.e){r=a.c
+s=s.as
+r=A.aN(r)===A.aN(s)&&A.b1(r)===A.b1(s)}}return r},
 $S:38}
 A.akV.prototype={
 $1(a){var s=this
