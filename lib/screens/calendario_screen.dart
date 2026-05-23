@@ -144,8 +144,20 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       });
 
       final resultado = await _githubService.salvarNoGithub(_config, _eventos);
-      
+
       if (!mounted) return;
+
+      // Se houve mesclagem com mudancas remotas, atualiza o estado local
+      if (resultado['sucesso'] == true && resultado['eventosMesclados'] != null) {
+        final List<EventoModel> mesclados = resultado['eventosMesclados'];
+        if (mesclados.length != _eventos.length) {
+          setState(() {
+            _eventos = mesclados;
+          });
+          await _storageService.salvarEventosLocais(mesclados);
+          _atualizarNotasController();
+        }
+      }
 
       setState(() {
         _sincronizando = false;

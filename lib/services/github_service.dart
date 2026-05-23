@@ -92,8 +92,13 @@ class GithubService {
   }
 
   // Envia e commita o arquivo CSV no repositório do GitHub
-  // Retorna um Map contendo {'sucesso': bool, 'mensagem': String}
-  Future<Map<String, dynamic>> salvarNoGithub(ConfigModel config, List<EventoModel> eventos) async {
+  // Em caso de conflito de SHA (409), recarrega o remoto, mescla com o local e tenta uma vez novamente.
+  // Retorna {'sucesso': bool, 'mensagem': String, 'eventosMesclados': List<EventoModel>?}
+  Future<Map<String, dynamic>> salvarNoGithub(
+    ConfigModel config,
+    List<EventoModel> eventos, {
+    int tentativa = 0,
+  }) async {
     if (!config.estaConfiguradoGithub) {
       return {
         'sucesso': false,
@@ -142,28 +147,51 @@ class GithubService {
         _ultimoSha = dados['content']['sha']; // Atualiza o SHA local com o novo sha retornado
         return {
           'sucesso': true,
-          'mensagem': 'Alterações salvas no GitHub com sucesso!'
+          'mensagem': tentativa > 0
+              ? 'Sincronizado (mesclado com mudanças remotas).'
+              : 'Alterações salvas no GitHub com sucesso!',
+          'eventosMesclados': eventos,
         };
-      } else {
-        // Se der erro de conflito (409), significa que o SHA está desatualizado. Força uma recarga.
-        if (resposta.statusCode == 409) {
-          _ultimoSha = null; // Reseta sha para forçar recarga da próxima vez
-          return {
-            'sucesso': false,
-            'mensagem': 'Erro de concorrência: Os dados no GitHub foram modificados. Recarregue a página antes de salvar.'
-          };
+      }
+
+      // Conflito de SHA: recarrega remoto, mescla e tenta novamente (uma vez)
+      if (resposta.statusCode == 409 && tentativa < 1) {
+        _ultimoSha = null;
+        final resultadoRecarga = await carregarDoGithub(config);
+        if (resultadoRecarga['sucesso'] == true) {
+          final List<EventoModel> remotos = resultadoRecarga['eventos'];
+          final List<EventoModel> mesclados = _mesclarEventos(eventos, remotos);
+          return salvarNoGithub(config, mesclados, tentativa: tentativa + 1);
         }
         return {
           'sucesso': false,
-          'mensagem': 'Erro ao salvar (Código ${resposta.statusCode}): ${resposta.reasonPhrase}'
+          'mensagem': 'Conflito detectado, mas falha ao recarregar dados remotos.',
         };
       }
+
+      return {
+        'sucesso': false,
+        'mensagem': 'Erro ao salvar (Código ${resposta.statusCode}): ${resposta.reasonPhrase}'
+      };
     } catch (e) {
       return {
         'sucesso': false,
         'mensagem': 'Erro de rede ao salvar: $e'
       };
     }
+  }
+
+  // Mescla eventos locais com remotos: locais têm prioridade em conflitos de ID,
+  // remotos extras (criados por outro usuário enquanto isso) são preservados.
+  List<EventoModel> _mesclarEventos(List<EventoModel> locais, List<EventoModel> remotos) {
+    final idsLocais = {for (var e in locais) e.id};
+    final List<EventoModel> resultado = List<EventoModel>.from(locais);
+    for (final r in remotos) {
+      if (!idsLocais.contains(r.id)) {
+        resultado.add(r);
+      }
+    }
+    return resultado;
   }
 }
 
