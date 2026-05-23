@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
+import 'services/storage_service.dart';
+import 'services/supabase_service.dart';
 import 'utils/cores_projeto.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializa o Supabase usando as credenciais persistidas (se houver).
+  // Se nao houver, o usuario sera direcionado a tela de Config no primeiro uso.
+  final config = await StorageService().carregarConfig();
+  if (config.estaConfiguradoSupabase) {
+    await SupabaseService.inicializar(config);
+  }
+
   runApp(const NossoCalendarioApp());
 }
 

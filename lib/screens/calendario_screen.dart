@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/config_model.dart';
 import '../models/evento_model.dart';
-import '../services/github_service.dart';
 import '../services/storage_service.dart';
+import '../services/supabase_service.dart';
 import '../utils/cores_projeto.dart';
 import '../widgets/grade_milimetrada.dart';
 import 'config_screen.dart';
@@ -18,17 +18,16 @@ class CalendarioScreen extends StatefulWidget {
 
 class _CalendarioScreenState extends State<CalendarioScreen> {
   final StorageService _storageService = StorageService();
-  final GithubService _githubService = GithubService();
+  final SupabaseService _supabaseService = SupabaseService();
 
   ConfigModel _config = ConfigModel();
   List<EventoModel> _eventos = [];
-  
+
   bool _carregando = true;
   bool _sincronizando = false;
-  bool _sincronizandoSilencioso = false;
   String _mensagemSinc = '';
-  
-  Timer? _timerSincronizacao;
+
+  StreamSubscription<List<EventoModel>>? _streamEventos;
   
   DateTime _dataSelecionada = DateTime.now();
   final List<String> _mesesAbreviados = [
@@ -48,130 +47,130 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   void initState() {
     super.initState();
     _inicializarDados();
-    
-    // Configura sincronização automática periódica a cada 30 segundos
-    _timerSincronizacao = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (_config.estaConfiguradoGithub && !_sincronizando && !_sincronizandoSilencioso) {
-        _sincronizarComGithubSilencioso();
-      }
-    });
   }
 
   @override
   void dispose() {
-    _timerSincronizacao?.cancel();
+    _streamEventos?.cancel();
     _notasController.dispose();
     _novaTarefaController.dispose();
     super.dispose();
   }
 
   Future<void> _inicializarDados() async {
-    // 1. Carrega configurações locais
     final config = await _storageService.carregarConfig();
-    
-    setState(() {
-      _config = config;
-    });
+    setState(() => _config = config);
 
-    // 2. Carrega eventos do cache local inicialmente para abrir rápido
+    // Cache local primeiro pra abrir rapido / funcionar offline
     final eventosLocais = await _storageService.carregarEventosLocais();
     setState(() {
       _eventos = eventosLocais;
       _carregando = false;
     });
-
     _atualizarNotasController();
 
-    // 3. Sincroniza com o GitHub se configurado
-    if (_config.estaConfiguradoGithub) {
-      _sincronizarComGithub();
+    // Conecta stream em tempo real do Supabase se configurado
+    if (_config.estaConfiguradoSupabase) {
+      await SupabaseService.inicializar(_config);
+      _conectarStream();
     }
   }
 
-  Future<void> _sincronizarComGithub() async {
-    if (_sincronizando) return;
-
+  void _conectarStream() {
+    _streamEventos?.cancel();
     setState(() {
       _sincronizando = true;
-      _mensagemSinc = 'Sincronizando...';
+      _mensagemSinc = 'Conectando...';
     });
 
-    final resultado = await _githubService.carregarDoGithub(_config);
+    _streamEventos = _supabaseService.streamEventos().listen(
+      (eventos) async {
+        if (!mounted) return;
+        setState(() {
+          _eventos = eventos;
+          _sincronizando = false;
+          _mensagemSinc = 'Online';
+        });
+        await _storageService.salvarEventosLocais(eventos);
+        final focus = FocusScope.of(context);
+        if (!focus.hasFocus) {
+          _atualizarNotasController();
+        }
+      },
+      onError: (e) {
+        if (!mounted) return;
+        setState(() {
+          _sincronizando = false;
+          _mensagemSinc = 'Offline';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erro de conexao com Supabase: $e',
+              style: CoresProjeto.estiloTextoMono(12),
+            ),
+            backgroundColor: Colors.orangeAccent,
+          ),
+        );
+      },
+    );
+  }
 
-    if (!mounted) return;
+  // Salva um unico evento no Supabase com UI otimista.
+  // O stream confirma a mudanca em seguida (~200ms).
+  Future<void> _salvarEvento(EventoModel evento) async {
+    setState(() {
+      final idx = _eventos.indexWhere((e) => e.id == evento.id);
+      if (idx >= 0) {
+        _eventos[idx] = evento;
+      } else {
+        _eventos.add(evento);
+      }
+    });
+    await _storageService.salvarEventosLocais(_eventos);
 
-    if (resultado['sucesso'] == true) {
-      final List<EventoModel> eventosGithub = resultado['eventos'];
-      
-      // Salva no cache local para uso futuro
-      await _storageService.salvarEventosLocais(eventosGithub);
-
-      setState(() {
-        _eventos = eventosGithub;
-        _sincronizando = false;
-        _mensagemSinc = resultado['mensagem'];
-      });
-      
-      _atualizarNotasController();
-    } else {
-      setState(() {
-        _sincronizando = false;
-        _mensagemSinc = resultado['mensagem'];
-      });
-      
-      // Exibe erro amigável na barra inferior
+    if (!_config.estaConfiguradoSupabase || !SupabaseService.prontoParaUsar) {
+      return;
+    }
+    try {
+      await _supabaseService.salvarEvento(evento);
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Offline: usando cache local. (${resultado['mensagem']})',
+            'Falha ao salvar no Supabase: $e',
             style: CoresProjeto.estiloTextoMono(12),
           ),
-          backgroundColor: Colors.orangeAccent,
+          backgroundColor: Colors.redAccent,
         ),
       );
     }
   }
 
-  Future<void> _salvarDadosGerais() async {
-    // Salva localmente primeiro
+  // Deleta um evento (UI otimista + Supabase).
+  Future<void> _deletarEvento(String id) async {
+    setState(() {
+      _eventos.removeWhere((e) => e.id == id);
+    });
     await _storageService.salvarEventosLocais(_eventos);
-    
-    // Se o GitHub estiver configurado, envia para lá
-    if (_config.estaConfiguradoGithub) {
-      setState(() {
-        _sincronizando = true;
-        _mensagemSinc = 'Enviando ao GitHub...';
-      });
 
-      final resultado = await _githubService.salvarNoGithub(_config, _eventos);
-
+    if (!_config.estaConfiguradoSupabase || !SupabaseService.prontoParaUsar) {
+      return;
+    }
+    try {
+      await _supabaseService.deletarEvento(id);
+    } catch (e) {
       if (!mounted) return;
-
-      // Se houve mesclagem com mudancas remotas, atualiza o estado local
-      if (resultado['sucesso'] == true && resultado['eventosMesclados'] != null) {
-        final List<EventoModel> mesclados = resultado['eventosMesclados'];
-        if (mesclados.length != _eventos.length) {
-          setState(() {
-            _eventos = mesclados;
-          });
-          await _storageService.salvarEventosLocais(mesclados);
-          _atualizarNotasController();
-        }
-      }
-
-      setState(() {
-        _sincronizando = false;
-        _mensagemSinc = resultado['mensagem'];
-      });
-
-      if (!resultado['sucesso']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(resultado['mensagem'], style: CoresProjeto.estiloTextoMono(12)),
-            backgroundColor: Colors.redAccent,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Falha ao deletar no Supabase: $e',
+            style: CoresProjeto.estiloTextoMono(12),
           ),
-        );
-      }
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -205,123 +204,32 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
     }
   }
 
-  // Notas do mês: salva no CSV e sincroniza com o GitHub
+  // Notas do mes: cria/atualiza/deleta a nota do mes ativo no Supabase.
   Future<void> _salvarNotas() async {
     final novasNotas = _notasController.text.trim();
     final notasAntigas = _obterNotasDoMes();
-
     if (novasNotas == notasAntigas) return;
-    
-    // Procura se já existe uma nota para o mês/ano
-    final index = _eventos.indexWhere(
-      (e) => e.categoria == 'Nota' &&
-             e.tipo == _tipoNotaAtivo &&
-             (_tipoNotaAtivo == 'Compartilhado' || e.usuario == _config.usuarioAtivo) &&
-             e.data.year == _dataSelecionada.year &&
-             e.data.month == _dataSelecionada.month,
+
+    final idNota = _tipoNotaAtivo == 'Compartilhado'
+        ? 'nota_compartilhada_${_dataSelecionada.year}_${_dataSelecionada.month}'
+        : 'nota_${_config.usuarioAtivo}_${_dataSelecionada.year}_${_dataSelecionada.month}';
+
+    if (novasNotas.isEmpty) {
+      await _deletarEvento(idNota);
+      return;
+    }
+
+    final nota = EventoModel(
+      id: idNota,
+      usuario: _config.usuarioAtivo,
+      data: DateTime(_dataSelecionada.year, _dataSelecionada.month, 1),
+      titulo: novasNotas,
+      descricao: '',
+      tipo: _tipoNotaAtivo,
+      categoria: 'Nota',
+      corHex: '#EAEAEA',
     );
-
-    if (index != -1) {
-      if (novasNotas.isEmpty) {
-        setState(() {
-          _eventos.removeAt(index);
-        });
-      } else {
-        setState(() {
-          _eventos[index] = _eventos[index].copyWith(
-            titulo: novasNotas,
-            usuario: _config.usuarioAtivo,
-          );
-        });
-      }
-      await _salvarDadosGerais();
-    } else if (novasNotas.isNotEmpty) {
-      final idNota = _tipoNotaAtivo == 'Compartilhado'
-          ? 'nota_compartilhada_${_dataSelecionada.year}_${_dataSelecionada.month}'
-          : 'nota_${_config.usuarioAtivo}_${_dataSelecionada.year}_${_dataSelecionada.month}';
-
-      final novaNota = EventoModel(
-        id: idNota,
-        usuario: _config.usuarioAtivo,
-        data: DateTime(_dataSelecionada.year, _dataSelecionada.month, 1),
-        titulo: novasNotas,
-        descricao: '',
-        tipo: _tipoNotaAtivo,
-        categoria: 'Nota',
-        corHex: '#EAEAEA',
-      );
-      setState(() {
-        _eventos.add(novaNota);
-      });
-      await _salvarDadosGerais();
-    }
-  }
-
-  // Sincronização periódica em segundo plano
-  Future<void> _sincronizarComGithubSilencioso() async {
-    if (_sincronizando || _sincronizandoSilencioso) return;
-
-    setState(() {
-      _sincronizandoSilencioso = true;
-    });
-
-    final resultado = await _githubService.carregarDoGithub(_config);
-
-    if (!mounted) return;
-
-    if (resultado['sucesso'] == true) {
-      final List<EventoModel> eventosGithub = resultado['eventos'];
-      
-      // Compara se houve alguma mudança nos eventos salvos
-      bool mudou = _eventos.length != eventosGithub.length;
-      if (!mudou) {
-        for (var evG in eventosGithub) {
-          final evL = _eventos.firstWhere(
-            (e) => e.id == evG.id,
-            orElse: () => EventoModel(
-              id: '',
-              usuario: '',
-              data: DateTime.now(),
-              titulo: '',
-              descricao: '',
-              tipo: '',
-              categoria: '',
-              corHex: '',
-            ),
-          );
-          if (evL.id.isEmpty || 
-              evL.titulo != evG.titulo || 
-              evL.descricao != evG.descricao || 
-              evL.concluido != evG.concluido ||
-              evL.categoria != evG.categoria ||
-              evL.tipo != evG.tipo ||
-              evL.data != evG.data ||
-              evL.horaInicio != evG.horaInicio ||
-              evL.horaFim != evG.horaFim) {
-            mudou = true;
-            break;
-          }
-        }
-      }
-
-      if (mudou) {
-        await _storageService.salvarEventosLocais(eventosGithub);
-        setState(() {
-          _eventos = eventosGithub;
-          _mensagemSinc = 'Sincronizado';
-        });
-        
-        // Só atualiza o texto se o usuário não estiver focado digitando
-        final focus = FocusScope.of(context);
-        if (!focus.hasFocus) {
-          _atualizarNotasController();
-        }
-      }
-    }
-
-    setState(() {
-      _sincronizandoSilencioso = false;
-    });
+    await _salvarEvento(nota);
   }
 
   // --- Lógica de Geração do Calendário ---
@@ -806,17 +714,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                         horaFim: horaFimSel,
                       );
 
-                      setState(() {
-                        if (eventoExistente == null) {
-                          _eventos.add(novoEv);
-                        } else {
-                          final idx = _eventos.indexWhere((e) => e.id == id);
-                          if (idx != -1) _eventos[idx] = novoEv;
-                        }
-                      });
-
                       Navigator.of(context).pop();
-                      _salvarDadosGerais();
+                      _salvarEvento(novoEv);
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -837,19 +736,15 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   }
 
   Future<void> _excluirEvento(String id) async {
-    setState(() {
-      _eventos.removeWhere((e) => e.id == id);
-    });
-    await _salvarDadosGerais();
+    await _deletarEvento(id);
   }
 
-  // --- Operações do Checklist de Tarefas ---
+  // --- Operacoes do Checklist de Tarefas ---
 
   Future<void> _adicionarTarefaRapida() async {
     final titulo = _novaTarefaController.text.trim();
     if (titulo.isEmpty) return;
 
-    // A tarefa do mês é salva como um evento especial no dia 1 daquele mês, com a categoria 'Tarefa'
     final novaTarefa = EventoModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       usuario: _config.usuarioAtivo,
@@ -862,21 +757,13 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       concluido: false,
     );
 
-    setState(() {
-      _eventos.add(novaTarefa);
-      _novaTarefaController.clear();
-    });
-
-    await _salvarDadosGerais();
+    _novaTarefaController.clear();
+    await _salvarEvento(novaTarefa);
   }
 
   Future<void> _alternarStatusTarefa(EventoModel tarefa) async {
     final atualizada = tarefa.copyWith(concluido: !tarefa.concluido);
-    setState(() {
-      final idx = _eventos.indexWhere((e) => e.id == tarefa.id);
-      if (idx != -1) _eventos[idx] = atualizada;
-    });
-    await _salvarDadosGerais();
+    await _salvarEvento(atualizada);
   }
 
   // --- Auxiliares Visuais ---
@@ -1023,8 +910,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
           // Controles (Sincronizar, Configurar, Logout)
           Row(
             children: [
-              // Indicador de Sincronização
-              if (_config.estaConfiguradoGithub) ...[
+              // Indicador de Sincronizacao
+              if (_config.estaConfiguradoSupabase) ...[
                 if (_sincronizando)
                   const SizedBox(
                     width: 14,
@@ -1032,10 +919,12 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                     child: CircularProgressIndicator(strokeWidth: 1.5, color: CoresProjeto.destaqueAtivo),
                   )
                 else
-                  IconButton(
-                    icon: const Icon(Icons.sync, color: CoresProjeto.textoEscuro, size: 18),
-                    tooltip: 'Sincronizar agora',
-                    onPressed: _sincronizarComGithub,
+                  Icon(
+                    Icons.cloud_done_outlined,
+                    color: _mensagemSinc == 'Online'
+                        ? CoresProjeto.destaqueAtivo
+                        : CoresProjeto.textoClaro,
+                    size: 18,
                   ),
                 const SizedBox(width: 8),
                 Text(
@@ -1045,16 +934,16 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                 const SizedBox(width: 16),
               ],
 
-              // Botão Configurações
+              // Botao Configuracoes
               IconButton(
                 icon: const Icon(Icons.settings_outlined, color: CoresProjeto.textoEscuro, size: 20),
-                tooltip: 'Ajustes / GitHub API',
+                tooltip: 'Ajustes / Supabase',
                 onPressed: () async {
                   final mudou = await Navigator.of(context).push<bool>(
                     MaterialPageRoute(builder: (context) => const ConfigScreen()),
                   );
                   if (mudou == true) {
-                    _inicializarDados(); // Recarrega se alterou configs
+                    _inicializarDados();
                   }
                 },
               ),

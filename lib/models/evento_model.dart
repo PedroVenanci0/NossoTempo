@@ -60,6 +60,43 @@ class EventoModel {
     );
   }
 
+  // ----- Supabase (Map<String,dynamic>) -----
+
+  // Converte o evento em um Map para inserir/atualizar no Supabase.
+  // As chaves seguem o snake_case da tabela `public.eventos`.
+  Map<String, dynamic> toSupabaseRow() {
+    return {
+      'id': id,
+      'usuario': usuario,
+      'data': _formatarData(data),
+      'titulo': titulo,
+      'descricao': descricao,
+      'tipo': tipo,
+      'categoria': categoria,
+      'cor_hex': corHex,
+      'concluido': concluido,
+      'hora_inicio': horaInicio,
+      'hora_fim': horaFim,
+    };
+  }
+
+  // Constroi um EventoModel a partir de uma linha vinda do Supabase.
+  factory EventoModel.fromSupabaseRow(Map<String, dynamic> row) {
+    return EventoModel(
+      id: row['id']?.toString() ?? '',
+      usuario: row['usuario']?.toString() ?? '',
+      data: DateTime.parse(row['data'].toString()),
+      titulo: row['titulo']?.toString() ?? '',
+      descricao: row['descricao']?.toString() ?? '',
+      tipo: row['tipo']?.toString() ?? '',
+      categoria: row['categoria']?.toString() ?? '',
+      corHex: row['cor_hex']?.toString() ?? '',
+      concluido: row['concluido'] == true,
+      horaInicio: row['hora_inicio']?.toString().isNotEmpty == true ? row['hora_inicio'].toString() : null,
+      horaFim: row['hora_fim']?.toString().isNotEmpty == true ? row['hora_fim'].toString() : null,
+    );
+  }
+
   EventoModel copyWith({
     String? id,
     String? usuario,

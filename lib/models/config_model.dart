@@ -1,23 +1,36 @@
 class ConfigModel {
+  // Supabase (novo backend)
+  final String supabaseUrl;
+  final String supabaseAnonKey;
+
+  // GitHub (legado, mantido apenas para importar dados antigos)
   final String githubToken;
-  final String githubRepo; // Ex: 'pedro/CalendarioCompartilhado'
-  final String ramo; // Ex: 'main' ou 'gh-pages'
-  final String caminhoArquivo; // Ex: 'dados_calendario.csv'
-  final String usuarioAtivo; // 'Pedro' ou 'Maria Luiza'
-  final String senhaPedro; // Senha para o login do Pedro
-  final String senhaMariaLuiza; // Senha para o login da Maria Luiza
-  final String notasMes; // Campo de texto livre para as notas do mês
+  final String githubRepo;
+  final String ramo;
+  final String caminhoArquivo;
+
+  // Sessao / acesso
+  final String usuarioAtivo;
+  final String senhaPedro;
+  final String senhaMariaLuiza;
+  final String notasMes;
 
   ConfigModel({
+    this.supabaseUrl = '',
+    this.supabaseAnonKey = '',
     this.githubToken = '',
     this.githubRepo = '',
     this.ramo = 'main',
     this.caminhoArquivo = 'dados_calendario.csv',
     this.usuarioAtivo = '',
-    this.senhaPedro = 'amareloazul',      // Senha padrão inicial Pedro
-    this.senhaMariaLuiza = 'amareloazul',  // Senha padrão inicial Maria Luiza
+    this.senhaPedro = 'amareloazul',
+    this.senhaMariaLuiza = 'amareloazul',
     this.notasMes = '',
   });
+
+  bool get estaConfiguradoSupabase {
+    return supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+  }
 
   bool get estaConfiguradoGithub {
     return githubToken.isNotEmpty && githubRepo.isNotEmpty;
@@ -25,6 +38,8 @@ class ConfigModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'supabaseUrl': supabaseUrl,
+      'supabaseAnonKey': supabaseAnonKey,
       'githubToken': githubToken,
       'githubRepo': githubRepo,
       'ramo': ramo,
@@ -38,19 +53,22 @@ class ConfigModel {
 
   factory ConfigModel.fromJson(Map<String, dynamic> json) {
     return ConfigModel(
+      supabaseUrl: json['supabaseUrl'] ?? '',
+      supabaseAnonKey: json['supabaseAnonKey'] ?? '',
       githubToken: json['githubToken'] ?? '',
       githubRepo: json['githubRepo'] ?? '',
       ramo: json['ramo'] ?? 'main',
       caminhoArquivo: json['caminhoArquivo'] ?? 'dados_calendario.csv',
       usuarioAtivo: json['usuarioAtivo'] ?? '',
       senhaPedro: json['senhaPedro'] ?? 'amareloazul',
-      // Fallback para suportar migração transparente do cache antigo 'senhaNamorada'
       senhaMariaLuiza: json['senhaMariaLuiza'] ?? json['senhaNamorada'] ?? 'amareloazul',
       notasMes: json['notasMes'] ?? '',
     );
   }
 
   ConfigModel copyWith({
+    String? supabaseUrl,
+    String? supabaseAnonKey,
     String? githubToken,
     String? githubRepo,
     String? ramo,
@@ -61,6 +79,8 @@ class ConfigModel {
     String? notasMes,
   }) {
     return ConfigModel(
+      supabaseUrl: supabaseUrl ?? this.supabaseUrl,
+      supabaseAnonKey: supabaseAnonKey ?? this.supabaseAnonKey,
       githubToken: githubToken ?? this.githubToken,
       githubRepo: githubRepo ?? this.githubRepo,
       ramo: ramo ?? this.ramo,
