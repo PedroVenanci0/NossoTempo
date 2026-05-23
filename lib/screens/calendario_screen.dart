@@ -41,6 +41,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   // Controladores do painel esquerdo
   final TextEditingController _notasController = TextEditingController();
   final TextEditingController _novaTarefaController = TextEditingController();
+  String _tipoNovaTarefa = 'Privado';
+  String _tipoNotaAtivo = 'Compartilhado';
 
   @override
   void initState() {
@@ -165,7 +167,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   String _obterNotasDoMes() {
     final eventoNota = _eventos.firstWhere(
       (e) => e.categoria == 'Nota' &&
-             e.usuario == _config.usuarioAtivo &&
+             e.tipo == _tipoNotaAtivo &&
+             (_tipoNotaAtivo == 'Compartilhado' || e.usuario == _config.usuarioAtivo) &&
              e.data.year == _dataSelecionada.year &&
              e.data.month == _dataSelecionada.month,
       orElse: () => EventoModel(
@@ -174,7 +177,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
         data: DateTime.now(),
         titulo: '',
         descricao: '',
-        tipo: 'Privado',
+        tipo: _tipoNotaAtivo,
         categoria: 'Nota',
         corHex: '',
       ),
@@ -197,10 +200,11 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
 
     if (novasNotas == notasAntigas) return;
     
-    // Procura se já existe uma nota para o mês/ano do usuário ativo
+    // Procura se já existe uma nota para o mês/ano
     final index = _eventos.indexWhere(
       (e) => e.categoria == 'Nota' &&
-             e.usuario == _config.usuarioAtivo &&
+             e.tipo == _tipoNotaAtivo &&
+             (_tipoNotaAtivo == 'Compartilhado' || e.usuario == _config.usuarioAtivo) &&
              e.data.year == _dataSelecionada.year &&
              e.data.month == _dataSelecionada.month,
     );
@@ -220,13 +224,17 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       }
       await _salvarDadosGerais();
     } else if (novasNotas.isNotEmpty) {
+      final idNota = _tipoNotaAtivo == 'Compartilhado'
+          ? 'nota_compartilhada_${_dataSelecionada.year}_${_dataSelecionada.month}'
+          : 'nota_${_config.usuarioAtivo}_${_dataSelecionada.year}_${_dataSelecionada.month}';
+
       final novaNota = EventoModel(
-        id: 'nota_${_config.usuarioAtivo}_${_dataSelecionada.year}_${_dataSelecionada.month}',
+        id: idNota,
         usuario: _config.usuarioAtivo,
         data: DateTime(_dataSelecionada.year, _dataSelecionada.month, 1),
         titulo: novasNotas,
         descricao: '',
-        tipo: 'Privado',
+        tipo: _tipoNotaAtivo,
         categoria: 'Nota',
         corHex: '#EAEAEA',
       );
@@ -371,10 +379,13 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   // Filtra as tarefas do mês selecionado
   List<EventoModel> _obterTarefasDoMes() {
     return _eventos.where((e) {
-      return e.categoria == 'Tarefa' &&
-             e.usuario == _config.usuarioAtivo &&
+      final mesmaData = e.categoria == 'Tarefa' &&
              e.data.year == _dataSelecionada.year &&
              e.data.month == _dataSelecionada.month;
+      if (!mesmaData) return false;
+
+      // Retorna tarefas compartilhadas OU privadas que pertencem ao usuário ativo
+      return e.tipo == 'Compartilhado' || e.usuario == _config.usuarioAtivo;
     }).toList();
   }
 
@@ -833,7 +844,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       data: DateTime(_dataSelecionada.year, _dataSelecionada.month, 1),
       titulo: titulo,
       descricao: '',
-      tipo: 'Privado', // Metas e tarefas de papel milimetrado agora são particulares e independentes!
+      tipo: _tipoNovaTarefa,
       categoria: 'Tarefa',
       corHex: '#CCCCCC',
       concluido: false,
@@ -1086,6 +1097,37 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
     );
   }
 
+  Widget _buildBotaoFiltroNota(String tipo, IconData icone) {
+    final ativo = _tipoNotaAtivo == tipo;
+    return Tooltip(
+      message: tipo == 'Compartilhado' ? 'Notas Compartilhadas' : 'Minhas Notas Particulares',
+      child: InkWell(
+        onTap: () async {
+          if (_tipoNotaAtivo == tipo) return;
+          await _salvarNotas();
+          setState(() {
+            _tipoNotaAtivo = tipo;
+            _atualizarNotasController();
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: ativo ? CoresProjeto.textoEscuro : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(
+            icone,
+            size: 11,
+            color: ativo
+                ? CoresProjeto.fundoCaderno
+                : (tipo == 'Compartilhado' ? Colors.redAccent : CoresProjeto.textoClaro),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Painel Esquerdo (Notas e Grade quadriculada de tarefas)
   Widget _buildPainelLateral() {
     return Column(
@@ -1101,13 +1143,25 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: const BoxDecoration(
                   border: Border(bottom: BorderSide(color: CoresProjeto.bordaCinza, width: 1.0)),
                 ),
-                child: Text(
-                  'NOTAS DO MÊS',
-                  style: CoresProjeto.estiloTextoMono(10, bold: true),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'NOTAS DO MÊS',
+                      style: CoresProjeto.estiloTextoMono(10, bold: true),
+                    ),
+                    Row(
+                      children: [
+                        _buildBotaoFiltroNota('Compartilhado', Icons.favorite),
+                        const SizedBox(width: 4),
+                        _buildBotaoFiltroNota('Privado', Icons.lock),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               Expanded(
@@ -1175,6 +1229,30 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    // Seletor de tipo de nova meta (Compartilhado vs Privado)
+                    Tooltip(
+                      message: _tipoNovaTarefa == 'Compartilhado' ? 'Meta Compartilhada' : 'Meta Particular',
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            _tipoNovaTarefa = _tipoNovaTarefa == 'Compartilhado' ? 'Privado' : 'Compartilhado';
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: CoresProjeto.bordaCinza, width: 1.0),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Icon(
+                            _tipoNovaTarefa == 'Compartilhado' ? Icons.favorite : Icons.lock,
+                            size: 14,
+                            color: _tipoNovaTarefa == 'Compartilhado' ? Colors.redAccent : CoresProjeto.textoEscuro,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
                     IconButton(
                       icon: const Icon(Icons.add, color: CoresProjeto.textoEscuro, size: 20),
                       onPressed: _adicionarTarefaRapida,
@@ -1226,6 +1304,13 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                 ),
               ),
               const SizedBox(width: 8),
+              // Ícone indicando se é compartilhada (coração) ou privada (cadeado)
+              Icon(
+                t.tipo == 'Compartilhado' ? Icons.favorite : Icons.lock,
+                size: 11,
+                color: t.tipo == 'Compartilhado' ? Colors.redAccent : CoresProjeto.textoClaro,
+              ),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   t.titulo,
