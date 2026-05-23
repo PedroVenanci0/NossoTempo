@@ -165,6 +165,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   String _obterNotasDoMes() {
     final eventoNota = _eventos.firstWhere(
       (e) => e.categoria == 'Nota' &&
+             e.usuario == _config.usuarioAtivo &&
              e.data.year == _dataSelecionada.year &&
              e.data.month == _dataSelecionada.month,
       orElse: () => EventoModel(
@@ -173,7 +174,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
         data: DateTime.now(),
         titulo: '',
         descricao: '',
-        tipo: 'Compartilhado',
+        tipo: 'Privado',
         categoria: 'Nota',
         corHex: '',
       ),
@@ -196,9 +197,10 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
 
     if (novasNotas == notasAntigas) return;
     
-    // Procura se já existe uma nota para o mês/ano
+    // Procura se já existe uma nota para o mês/ano do usuário ativo
     final index = _eventos.indexWhere(
       (e) => e.categoria == 'Nota' &&
+             e.usuario == _config.usuarioAtivo &&
              e.data.year == _dataSelecionada.year &&
              e.data.month == _dataSelecionada.month,
     );
@@ -219,12 +221,12 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       await _salvarDadosGerais();
     } else if (novasNotas.isNotEmpty) {
       final novaNota = EventoModel(
-        id: 'nota_${_dataSelecionada.year}_${_dataSelecionada.month}',
+        id: 'nota_${_config.usuarioAtivo}_${_dataSelecionada.year}_${_dataSelecionada.month}',
         usuario: _config.usuarioAtivo,
         data: DateTime(_dataSelecionada.year, _dataSelecionada.month, 1),
         titulo: novasNotas,
         descricao: '',
-        tipo: 'Compartilhado',
+        tipo: 'Privado',
         categoria: 'Nota',
         corHex: '#EAEAEA',
       );
@@ -370,6 +372,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   List<EventoModel> _obterTarefasDoMes() {
     return _eventos.where((e) {
       return e.categoria == 'Tarefa' &&
+             e.usuario == _config.usuarioAtivo &&
              e.data.year == _dataSelecionada.year &&
              e.data.month == _dataSelecionada.month;
     }).toList();
@@ -830,7 +833,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       data: DateTime(_dataSelecionada.year, _dataSelecionada.month, 1),
       titulo: titulo,
       descricao: '',
-      tipo: 'Compartilhado', // Tarefas de papel milimetrado são sempre compartilhadas para o casal!
+      tipo: 'Privado', // Metas e tarefas de papel milimetrado agora são particulares e independentes!
       categoria: 'Tarefa',
       corHex: '#CCCCCC',
       concluido: false,
