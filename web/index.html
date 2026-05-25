@@ -34,13 +34,35 @@
 </head>
 <body>
   <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
+    Limpa Service Workers e caches antigos ANTES de carregar o Flutter.
+    Isso garante que visitantes que acessaram a versao antiga (CSV/GitHub)
+    nao fiquem presos no cache e recebam a versao nova (Supabase).
   -->
+  <script>
+    (async function limpezaCache() {
+      try {
+        // 1. Desregistra TODOS os service workers antigos
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const reg of registrations) {
+            await reg.unregister();
+            console.log('[NossoTempo] Service Worker antigo removido:', reg.scope);
+          }
+        }
+
+        // 2. Limpa TODOS os caches do Cache Storage (usado pelo SW antigo do Flutter)
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          for (const name of cacheNames) {
+            await caches.delete(name);
+            console.log('[NossoTempo] Cache removido:', name);
+          }
+        }
+      } catch (e) {
+        console.warn('[NossoTempo] Erro ao limpar caches antigos:', e);
+      }
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
