@@ -2,17 +2,60 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class CoresProjeto {
+  static String temaAtivo = 'padrao'; // 'padrao', 'escuro', 'starwars', 'abelha'
+
   // Cores Principais do Caderno Bullet Journal
-  static const Color fundoCaderno = Color(0xFFFAF8F5);    // Creme suave / Off-white da imagem
-  static const Color bordaCinza = Color(0xFFB5B2A9);      // Cinza fino para as bordas das caixas
-  static const Color textoEscuro = Color(0xFF2B2A27);     // Cinza escuro quase preto para os textos
-  static const Color textoClaro = Color(0xFF8C8A82);      // Cinza suave para dias de outros meses
-  static const Color marcadorCinza = Color(0xFFE5E2DA);   // Marcador de dia no canto superior direito
-  static const Color gradePapel = Color(0xFFEFECE5);      // Linhas finas do papel milimetrado
+  static Color get fundoCaderno {
+    if (temaAtivo == 'escuro') return const Color(0xFF161618);
+    return const Color(0xFFFAF8F5);    // Creme suave / Off-white da imagem
+  }
+
+  static Color get bordaCinza {
+    if (temaAtivo == 'escuro') return const Color(0xFF2C2C2E);
+    if (temaAtivo == 'starwars') return const Color(0xFF3A3A3A);
+    if (temaAtivo == 'abelha') return const Color(0xFFD4AF37); // Borda amarelada/dourada
+    return const Color(0xFFB5B2A9);      // Cinza fino para as bordas das caixas
+  }
+
+  static Color get textoEscuro {
+    if (temaAtivo == 'escuro') return const Color(0xFFE5E5EA);
+    return const Color(0xFF2B2A27);     // Cinza escuro quase preto para os textos
+  }
+
+  static Color get textoClaro {
+    if (temaAtivo == 'escuro') return const Color(0xFF8E8E93);
+    return const Color(0xFF8C8A82);      // Cinza suave para dias de outros meses
+  }
+
+  static Color get marcadorCinza {
+    if (temaAtivo == 'escuro') return const Color(0xFF2C2C2E);
+    if (temaAtivo == 'abelha') return const Color(0xFFFFF6CC); // Amarelo bem suave
+    return const Color(0xFFE5E2DA);   // Marcador de dia no canto superior direito
+  }
+
+  static Color get gradePapel {
+    if (temaAtivo == 'escuro') return const Color(0xFF1C1C1E);
+    if (temaAtivo == 'abelha') return const Color(0xFFFFFCE5); // Fundo amarelado
+    return const Color(0xFFEFECE5);      // Linhas finas do papel milimetrado
+  }
 
   // Cores de Destaque / Botões Selecionados
-  static const Color destaqueAtivo = Color(0xFF4A4944);   // Mês ativo, botões selecionados (cinza escuro)
-  static const Color destaqueTexto = Color(0xFFFAF8F5);   // Texto sobre fundo ativo
+  static Color get destaqueAtivo {
+    if (temaAtivo == 'escuro') return const Color(0xFFE5E5EA); // Destaque cinza claro no escuro
+    if (temaAtivo == 'starwars') return const Color(0xFFFFC500); // Amarelo Star Wars
+    if (temaAtivo == 'abelha') return const Color(0xFFFFD700); // Amarelo abelha / ouro
+    return const Color(0xFF4A4944);   // Mês ativo, botões selecionados (cinza escuro)
+  }
+
+  static Color get destaqueTexto {
+    if (temaAtivo == 'escuro') return const Color(0xFF1C1C1E);
+    if (temaAtivo == 'starwars') return const Color(0xFF000000);
+    if (temaAtivo == 'abelha') return const Color(0xFF000000);
+    return const Color(0xFFFAF8F5);   // Texto sobre fundo ativo
+  }
+
+  // Texto de tag/compromisso (sempre escuro para ler sobre o fundo pastel do card)
+  static Color get textoCard => const Color(0xFF2B2A27);
 
   // Paleta de Cores Pastéis para Categorias de Eventos
   static const Color pastelRosa = Color(0xFFF3C5C5);      // Encontro / Romântico
@@ -95,19 +138,19 @@ class CoresProjeto {
     );
   }
 
-  static TextStyle estiloTextoMono(double tamanho, {bool bold = false, Color cor = textoEscuro}) {
+  static TextStyle estiloTextoMono(double tamanho, {bool bold = false, Color? cor}) {
     return GoogleFonts.spaceMono(
       fontSize: tamanho,
       fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-      color: cor,
+      color: cor ?? textoEscuro,
     );
   }
 
-  static TextStyle estiloTextoCorpo(double tamanho, {bool bold = false, Color cor = textoEscuro}) {
+  static TextStyle estiloTextoCorpo(double tamanho, {bool bold = false, Color? cor}) {
     return GoogleFonts.outfit(
       fontSize: tamanho,
       fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-      color: cor,
+      color: cor ?? textoEscuro,
     );
   }
 }

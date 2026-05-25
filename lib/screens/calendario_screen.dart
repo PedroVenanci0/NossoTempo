@@ -330,7 +330,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: CoresProjeto.fundoCaderno,
-              shape: const RoundedRectangleBorder(
+              shape: RoundedRectangleBorder(
                 side: BorderSide(color: CoresProjeto.bordaCinza, width: 1.0),
               ),
               title: Text(
@@ -390,7 +390,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                             builder: (context, child) {
                               return Theme(
                                 data: Theme.of(context).copyWith(
-                                  colorScheme: const ColorScheme.light(
+                                  colorScheme: ColorScheme.light(
                                     primary: CoresProjeto.destaqueAtivo,
                                     onPrimary: CoresProjeto.destaqueTexto,
                                     onSurface: CoresProjeto.textoEscuro,
@@ -418,7 +418,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                 '${dataSel.day.toString().padLeft(2, '0')}/${dataSel.month.toString().padLeft(2, '0')}/${dataSel.year}',
                                 style: CoresProjeto.estiloTextoMono(12),
                               ),
-                              const Icon(Icons.calendar_month, color: CoresProjeto.textoEscuro, size: 16),
+                              Icon(Icons.calendar_month, color: CoresProjeto.textoEscuro, size: 16),
                             ],
                           ),
                         ),
@@ -451,7 +451,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                       builder: (context, child) {
                                         return Theme(
                                           data: Theme.of(context).copyWith(
-                                            colorScheme: const ColorScheme.light(
+                                            colorScheme: ColorScheme.light(
                                               primary: CoresProjeto.destaqueAtivo,
                                               onPrimary: CoresProjeto.destaqueTexto,
                                               onSurface: CoresProjeto.textoEscuro,
@@ -490,7 +490,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                             child: const Icon(Icons.clear, color: Colors.redAccent, size: 14),
                                           )
                                         else
-                                          const Icon(Icons.access_time, color: CoresProjeto.textoEscuro, size: 14),
+                                          Icon(Icons.access_time, color: CoresProjeto.textoEscuro, size: 14),
                                       ],
                                     ),
                                   ),
@@ -527,7 +527,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                             builder: (context, child) {
                                               return Theme(
                                                 data: Theme.of(context).copyWith(
-                                                  colorScheme: const ColorScheme.light(
+                                                  colorScheme: ColorScheme.light(
                                                     primary: CoresProjeto.destaqueAtivo,
                                                     onPrimary: CoresProjeto.destaqueTexto,
                                                     onSurface: CoresProjeto.textoEscuro,
@@ -792,10 +792,10 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       hintText: hint,
       hintStyle: CoresProjeto.estiloTextoMono(10, cor: CoresProjeto.textoClaro.withOpacity(0.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      enabledBorder: const OutlineInputBorder(
+      enabledBorder: OutlineInputBorder(
         borderSide: BorderSide(color: CoresProjeto.bordaCinza, width: 1.0),
       ),
-      focusedBorder: const OutlineInputBorder(
+      focusedBorder: OutlineInputBorder(
         borderSide: BorderSide(color: CoresProjeto.destaqueAtivo, width: 1.5),
       ),
     );
@@ -806,7 +806,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   @override
   Widget build(BuildContext context) {
     if (_carregando) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: CoresProjeto.fundoCaderno,
         body: Center(
           child: CircularProgressIndicator(color: CoresProjeto.destaqueAtivo),
@@ -877,7 +877,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   Widget _buildBarraSuperior() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: CoresProjeto.fundoCaderno,
         border: Border(
           bottom: BorderSide(color: CoresProjeto.bordaCinza, width: 1.0),
@@ -890,7 +890,13 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
           Row(
             children: [
               Text(
-                'PLANEJAMENTO MENSAL',
+                _config.tema == 'abelha'
+                    ? '🐝 PLANEJAMENTO MENSAL 🐝'
+                    : _config.tema == 'starwars'
+                        ? '🪐 PLANEJAMENTO ESTELAR'
+                        : _config.tema == 'escuro'
+                            ? '🌙 PLANEJAMENTO NOTURNO'
+                            : 'PLANEJAMENTO MENSAL',
                 style: CoresProjeto.estiloTitulo(16),
               ),
               const SizedBox(width: 12),
@@ -913,7 +919,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
               // Indicador de Sincronizacao
               if (_config.estaConfiguradoSupabase) ...[
                 if (_sincronizando)
-                  const SizedBox(
+                  SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(strokeWidth: 1.5, color: CoresProjeto.destaqueAtivo),
@@ -936,7 +942,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
 
               // Botao Configuracoes
               IconButton(
-                icon: const Icon(Icons.settings_outlined, color: CoresProjeto.textoEscuro, size: 20),
+                icon: Icon(Icons.settings_outlined, color: CoresProjeto.textoEscuro, size: 20),
                 tooltip: 'Ajustes / Supabase',
                 onPressed: () async {
                   final mudou = await Navigator.of(context).push<bool>(
@@ -1045,14 +1051,18 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: CoresProjeto.bordaCinza, width: 1.0)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'NOTAS DO MÊS',
+                      _config.tema == 'abelha'
+                          ? '🍯 NOTAS DOCES'
+                          : _config.tema == 'starwars'
+                              ? '🪐 DIÁRIO DE BORDO'
+                              : 'NOTAS DO MÊS',
                       style: CoresProjeto.estiloTextoMono(10, bold: true),
                     ),
                     Row(
@@ -1107,11 +1117,15 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: CoresProjeto.bordaCinza, width: 1.0)),
                 ),
                 child: Text(
-                  'METAS & TAREFAS',
+                  _config.tema == 'abelha'
+                      ? '🐝 TAREFAS DA COLMEIA'
+                      : _config.tema == 'starwars'
+                          ? '🚀 MISSÕES DA ALIANÇA'
+                          : 'METAS & TAREFAS',
                   style: CoresProjeto.estiloTextoMono(10, bold: true),
                 ),
               ),
@@ -1155,13 +1169,13 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                     ),
                     const SizedBox(width: 4),
                     IconButton(
-                      icon: const Icon(Icons.add, color: CoresProjeto.textoEscuro, size: 20),
+                      icon: Icon(Icons.add, color: CoresProjeto.textoEscuro, size: 20),
                       onPressed: _adicionarTarefaRapida,
                     ),
                   ],
                 ),
               ),
-              const Divider(color: CoresProjeto.bordaCinza, height: 1.0, thickness: 1.0),
+              Divider(color: CoresProjeto.bordaCinza, height: 1.0, thickness: 1.0),
               // Checklist sobre papel quadriculado
               Expanded(
                 child: GradeMilimetrada(
@@ -1182,7 +1196,11 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
     if (tarefas.isEmpty) {
       return Center(
         child: Text(
-          'Nenhuma meta este mês.',
+          _config.tema == 'abelha'
+              ? 'Nenhuma colmeia aqui ainda... 🐝'
+              : _config.tema == 'starwars'
+                  ? 'Nenhuma missão por enquanto... 🌌'
+                  : 'Nenhuma meta este mês.',
           style: CoresProjeto.estiloTextoMono(10, cor: CoresProjeto.textoClaro),
         ),
       );
@@ -1254,8 +1272,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                   decoration: BoxDecoration(
                     color: CoresProjeto.fundoCaderno,
                     border: Border(
-                      right: d != 'DOM' ? const BorderSide(color: CoresProjeto.bordaCinza, width: 0.5) : BorderSide.none,
-                      bottom: const BorderSide(color: CoresProjeto.bordaCinza, width: 1.0),
+                      right: d != 'DOM' ? BorderSide(color: CoresProjeto.bordaCinza, width: 0.5) : BorderSide.none,
+                      bottom: BorderSide(color: CoresProjeto.bordaCinza, width: 1.0),
                     ),
                   ),
                   child: Text(
@@ -1285,8 +1303,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                 return Container(
                   decoration: BoxDecoration(
                     border: Border(
-                      right: !eUltimaColuna ? const BorderSide(color: CoresProjeto.bordaCinza, width: 0.5) : BorderSide.none,
-                      bottom: const BorderSide(color: CoresProjeto.bordaCinza, width: 0.5),
+                      right: !eUltimaColuna ? BorderSide(color: CoresProjeto.bordaCinza, width: 0.5) : BorderSide.none,
+                      bottom: BorderSide(color: CoresProjeto.bordaCinza, width: 0.5),
                     ),
                   ),
                 );
@@ -1303,8 +1321,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                   decoration: BoxDecoration(
                     color: eHoje ? CoresProjeto.gradePapel.withOpacity(0.4) : Colors.transparent,
                     border: Border(
-                      right: !eUltimaColuna ? const BorderSide(color: CoresProjeto.bordaCinza, width: 0.5) : BorderSide.none,
-                      bottom: const BorderSide(color: CoresProjeto.bordaCinza, width: 0.5),
+                      right: !eUltimaColuna ? BorderSide(color: CoresProjeto.bordaCinza, width: 0.5) : BorderSide.none,
+                      bottom: BorderSide(color: CoresProjeto.bordaCinza, width: 0.5),
                     ),
                   ),
                   child: Column(
@@ -1316,7 +1334,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                           margin: const EdgeInsets.only(top: 2, right: 2),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: CoresProjeto.marcadorCinza,
                           ),
                           child: Text(
@@ -1364,7 +1382,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                         child: Image.network(
                                           fotoEvento,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) => const Icon(
+                                          errorBuilder: (context, error, stackTrace) => Icon(
                                             Icons.person,
                                             size: 10,
                                             color: CoresProjeto.textoClaro,
@@ -1381,7 +1399,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                         style: CoresProjeto.estiloTextoMono(
                                           8, 
                                           bold: true, 
-                                          cor: CoresProjeto.textoEscuro
+                                          cor: CoresProjeto.textoCard
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),

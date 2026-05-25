@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/config_model.dart';
-import '../models/evento_model.dart';
-import '../services/github_service.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../utils/cores_projeto.dart';
@@ -15,7 +13,6 @@ class ConfigScreen extends StatefulWidget {
 
 class _ConfigScreenState extends State<ConfigScreen> {
   final StorageService _storageService = StorageService();
-  final GithubService _githubService = GithubService();
   final SupabaseService _supabaseService = SupabaseService();
 
   final _formKey = GlobalKey<FormState>();
@@ -24,21 +21,16 @@ class _ConfigScreenState extends State<ConfigScreen> {
   final _supabaseUrlController = TextEditingController();
   final _supabaseKeyController = TextEditingController();
 
-  // GitHub (legado, usado para importar CSV antigo)
-  final _tokenController = TextEditingController();
-  final _repoController = TextEditingController();
-  final _ramoController = TextEditingController();
-  final _arquivoController = TextEditingController();
-
   // Senhas
   final _senhaPedroController = TextEditingController();
   final _senhaMariaLuizaController = TextEditingController();
 
+  // Tema selecionado
+  String _temaSelecionado = 'padrao';
+
   ConfigModel _config = ConfigModel();
   bool _carregando = true;
   bool _salvando = false;
-  bool _importando = false;
-  String? _mensagemImport;
 
   @override
   void initState() {
@@ -52,12 +44,9 @@ class _ConfigScreenState extends State<ConfigScreen> {
       _config = config;
       _supabaseUrlController.text = config.supabaseUrl;
       _supabaseKeyController.text = config.supabaseAnonKey;
-      _tokenController.text = config.githubToken;
-      _repoController.text = config.githubRepo;
-      _ramoController.text = config.ramo;
-      _arquivoController.text = config.caminhoArquivo;
       _senhaPedroController.text = config.senhaPedro;
       _senhaMariaLuizaController.text = config.senhaMariaLuiza;
+      _temaSelecionado = config.tema;
       _carregando = false;
     });
   }
@@ -72,12 +61,9 @@ class _ConfigScreenState extends State<ConfigScreen> {
     final novaConfig = _config.copyWith(
       supabaseUrl: _supabaseUrlController.text.trim(),
       supabaseAnonKey: _supabaseKeyController.text.trim(),
-      githubToken: _tokenController.text.trim(),
-      githubRepo: _repoController.text.trim(),
-      ramo: _ramoController.text.trim(),
-      caminhoArquivo: _arquivoController.text.trim(),
       senhaPedro: _senhaPedroController.text.trim(),
       senhaMariaLuiza: _senhaMariaLuizaController.text.trim(),
+      tema: _temaSelecionado,
     );
 
     await _storageService.salvarConfig(novaConfig);
@@ -107,81 +93,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
     Navigator.of(context).pop(true);
   }
 
-  // Importa o CSV antigo do GitHub e popula a tabela do Supabase de uma vez.
-  Future<void> _importarCsvAntigo() async {
-    final config = _config.copyWith(
-      supabaseUrl: _supabaseUrlController.text.trim(),
-      supabaseAnonKey: _supabaseKeyController.text.trim(),
-      githubToken: _tokenController.text.trim(),
-      githubRepo: _repoController.text.trim(),
-      ramo: _ramoController.text.trim(),
-      caminhoArquivo: _arquivoController.text.trim(),
-    );
-
-    if (!config.estaConfiguradoGithub) {
-      setState(() {
-        _mensagemImport = 'Preencha os campos do GitHub primeiro (token + repositorio).';
-      });
-      return;
-    }
-    if (!config.estaConfiguradoSupabase) {
-      setState(() {
-        _mensagemImport = 'Preencha URL e Anon Key do Supabase primeiro.';
-      });
-      return;
-    }
-
-    setState(() {
-      _importando = true;
-      _mensagemImport = 'Baixando CSV do GitHub...';
-    });
-
-    // Garante que o Supabase esta inicializado com as credenciais atuais.
-    await SupabaseService.inicializar(config);
-
-    final resultado = await _githubService.carregarDoGithub(config);
-    if (resultado['sucesso'] != true) {
-      setState(() {
-        _importando = false;
-        _mensagemImport = 'Erro ao ler CSV: ${resultado['mensagem']}';
-      });
-      return;
-    }
-
-    final List<EventoModel> eventos = resultado['eventos'];
-    if (eventos.isEmpty) {
-      setState(() {
-        _importando = false;
-        _mensagemImport = 'CSV vazio - nada para importar.';
-      });
-      return;
-    }
-
-    setState(() {
-      _mensagemImport = 'Enviando ${eventos.length} eventos pro Supabase...';
-    });
-
-    try {
-      await _supabaseService.upsertEmLote(eventos);
-      // Persiste tambem no cache local pra o app abrir rapido na proxima vez.
-      await _storageService.salvarConfig(config);
-      await _storageService.salvarEventosLocais(eventos);
-
-      if (!mounted) return;
-      setState(() {
-        _config = config;
-        _importando = false;
-        _mensagemImport = 'Importacao concluida! ${eventos.length} eventos no Supabase.';
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _importando = false;
-        _mensagemImport = 'Erro ao gravar no Supabase: $e';
-      });
-    }
-  }
-
   Future<void> _logout() async {
     final novaConfig = _config.copyWith(usuarioAtivo: '');
     await _storageService.salvarConfig(novaConfig);
@@ -193,7 +104,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
   @override
   Widget build(BuildContext context) {
     if (_carregando) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: CoresProjeto.fundoCaderno,
         body: Center(
           child: CircularProgressIndicator(color: CoresProjeto.destaqueAtivo),
@@ -207,7 +118,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
         backgroundColor: CoresProjeto.fundoCaderno,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: CoresProjeto.textoEscuro),
+          icon: Icon(Icons.arrow_back, color: CoresProjeto.textoEscuro),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
@@ -262,117 +173,59 @@ class _ConfigScreenState extends State<ConfigScreen> {
                   ),
 
                   const SizedBox(height: 32),
-                  const Divider(color: CoresProjeto.bordaCinza, thickness: 1.0),
+                  Divider(color: CoresProjeto.bordaCinza, thickness: 1.0),
                   const SizedBox(height: 24),
 
-                  // ============== SECAO IMPORTACAO ==============
-                  _buildCabecalhoSecao(
-                    'IMPORTAR DADOS ANTIGOS DO CSV',
-                    Icons.upload_file_outlined,
-                  ),
+                  // ============== SECAO SELECAO DE TEMA ==============
+                  _buildCabecalhoSecao('TEMA DO APLICATIVO', Icons.palette_outlined),
                   const SizedBox(height: 8),
                   Text(
-                    'Use uma vez so para migrar os eventos/metas/notas que estao no CSV do GitHub pra dentro do Supabase. Depois disso o CSV nao e mais usado.',
+                    'Escolha o estilo visual do seu caderno.',
                     style: CoresProjeto.estiloTextoCorpo(12, cor: CoresProjeto.textoClaro),
                   ),
                   const SizedBox(height: 16),
-
-                  _buildInputLabel('GITHUB PERSONAL ACCESS TOKEN'),
-                  TextFormField(
-                    controller: _tokenController,
-                    style: CoresProjeto.estiloTextoMono(13),
-                    cursorColor: CoresProjeto.textoEscuro,
-                    decoration: _buildInputDecoration('ghp_xxxxxxxxxxxxxxxxxxxxxx'),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildInputLabel('REPOSITORIO (DONO/NOME)'),
-                  TextFormField(
-                    controller: _repoController,
-                    style: CoresProjeto.estiloTextoMono(13),
-                    cursorColor: CoresProjeto.textoEscuro,
-                    decoration: _buildInputDecoration('usuario/repositorio'),
-                    validator: (v) {
-                      if (v != null && v.isNotEmpty && !v.contains('/')) {
-                        return 'Formato: dono/nome';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildInputLabel('BRANCH'),
-                            TextFormField(
-                              controller: _ramoController,
-                              style: CoresProjeto.estiloTextoMono(13),
-                              cursorColor: CoresProjeto.textoEscuro,
-                              decoration: _buildInputDecoration('main'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildInputLabel('ARQUIVO CSV'),
-                            TextFormField(
-                              controller: _arquivoController,
-                              style: CoresProjeto.estiloTextoMono(13),
-                              cursorColor: CoresProjeto.textoEscuro,
-                              decoration: _buildInputDecoration('dados_calendario.csv'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Botao de importar
-                  OutlinedButton.icon(
-                    onPressed: _importando ? null : _importarCsvAntigo,
-                    icon: _importando
-                        ? const SizedBox(
-                            height: 14,
-                            width: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: CoresProjeto.textoEscuro),
-                          )
-                        : const Icon(Icons.cloud_upload_outlined, color: CoresProjeto.textoEscuro, size: 18),
-                    label: Text(
-                      _importando ? 'IMPORTANDO...' : 'IMPORTAR CSV PRO SUPABASE',
-                      style: CoresProjeto.estiloTextoMono(12, bold: true),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: CoresProjeto.bordaCinza, width: 1.0),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: CoresProjeto.textoEscuro, width: 1.0),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _temaSelecionado,
+                        dropdownColor: CoresProjeto.fundoCaderno,
+                        style: CoresProjeto.estiloTextoMono(13, cor: CoresProjeto.textoEscuro),
+                        iconEnabledColor: CoresProjeto.textoEscuro,
+                        onChanged: (String? novoTema) {
+                          if (novoTema != null) {
+                            setState(() {
+                              _temaSelecionado = novoTema;
+                            });
+                          }
+                        },
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'padrao',
+                            child: Text('PADRÃO (CREME)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'escuro',
+                            child: Text('ESCURO (PRETO)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'starwars',
+                            child: Text('STAR WARS'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'abelha',
+                            child: Text('ABELHA 🐝'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  if (_mensagemImport != null) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: CoresProjeto.bordaCinza, width: 1.0),
-                        color: CoresProjeto.fundoCaderno,
-                      ),
-                      child: Text(
-                        _mensagemImport!,
-                        style: CoresProjeto.estiloTextoMono(11, cor: CoresProjeto.textoEscuro),
-                      ),
-                    ),
-                  ],
 
                   const SizedBox(height: 32),
-                  const Divider(color: CoresProjeto.bordaCinza, thickness: 1.0),
+                  Divider(color: CoresProjeto.bordaCinza, thickness: 1.0),
                   const SizedBox(height: 24),
 
                   // ============== SECAO SENHAS ==============
@@ -427,7 +280,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
                       ),
                       child: Center(
                         child: _salvando
-                            ? const SizedBox(
+                            ? SizedBox(
                                 height: 16,
                                 width: 16,
                                 child: CircularProgressIndicator(color: CoresProjeto.destaqueTexto, strokeWidth: 2),
@@ -492,10 +345,10 @@ class _ConfigScreenState extends State<ConfigScreen> {
       hintText: hint,
       hintStyle: CoresProjeto.estiloTextoMono(12, cor: CoresProjeto.textoClaro.withOpacity(0.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      enabledBorder: const OutlineInputBorder(
+      enabledBorder: OutlineInputBorder(
         borderSide: BorderSide(color: CoresProjeto.bordaCinza, width: 1.0),
       ),
-      focusedBorder: const OutlineInputBorder(
+      focusedBorder: OutlineInputBorder(
         borderSide: BorderSide(color: CoresProjeto.destaqueAtivo, width: 1.5),
       ),
       errorBorder: const OutlineInputBorder(

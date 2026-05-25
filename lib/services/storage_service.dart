@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/config_model.dart';
 import '../models/evento_model.dart';
+import '../utils/cores_projeto.dart';
 import '../utils/csv_helper.dart';
 
 class StorageService {
@@ -13,6 +14,7 @@ class StorageService {
   Future<bool> salvarConfig(ConfigModel config) async {
     final prefs = await SharedPreferences.getInstance();
     String jsonStr = jsonEncode(config.toJson());
+    CoresProjeto.temaAtivo = config.tema;
     return await prefs.setString(keyConfig, jsonStr);
   }
 
@@ -21,14 +23,20 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     String? jsonStr = prefs.getString(keyConfig);
     if (jsonStr == null || jsonStr.isEmpty) {
-      return ConfigModel();
+      final config = ConfigModel();
+      CoresProjeto.temaAtivo = config.tema;
+      return config;
     }
     try {
       Map<String, dynamic> map = jsonDecode(jsonStr);
-      return ConfigModel.fromJson(map);
+      final config = ConfigModel.fromJson(map);
+      CoresProjeto.temaAtivo = config.tema;
+      return config;
     } catch (e) {
       debugPrint('Erro ao decodificar configurações: $e');
-      return ConfigModel();
+      final config = ConfigModel();
+      CoresProjeto.temaAtivo = config.tema;
+      return config;
     }
   }
 

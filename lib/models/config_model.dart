@@ -15,6 +15,9 @@ class ConfigModel {
   final String senhaMariaLuiza;
   final String notasMes;
 
+  // Tema do app: 'padrao', 'escuro', 'starwars', 'abelha'
+  final String tema;
+
   ConfigModel({
     this.supabaseUrl = 'https://opajjscefgseyafzxgxv.supabase.co',
     this.supabaseAnonKey = 'sb_publishable_r9s21oUWOevzyBeeteNqDA_cmb-AkxA',
@@ -26,6 +29,7 @@ class ConfigModel {
     this.senhaPedro = 'amareloazul',
     this.senhaMariaLuiza = 'amareloazul',
     this.notasMes = '',
+    this.tema = 'padrao',
   });
 
   bool get estaConfiguradoSupabase {
@@ -48,6 +52,7 @@ class ConfigModel {
       'senhaPedro': senhaPedro,
       'senhaMariaLuiza': senhaMariaLuiza,
       'notasMes': notasMes,
+      'tema': tema,
     };
   }
 
@@ -65,6 +70,7 @@ class ConfigModel {
       senhaPedro: json['senhaPedro'] ?? 'amareloazul',
       senhaMariaLuiza: json['senhaMariaLuiza'] ?? json['senhaNamorada'] ?? 'amareloazul',
       notasMes: json['notasMes'] ?? '',
+      tema: json['tema'] ?? 'padrao',
     );
   }
 
@@ -79,6 +85,7 @@ class ConfigModel {
     String? senhaPedro,
     String? senhaMariaLuiza,
     String? notasMes,
+    String? tema,
   }) {
     return ConfigModel(
       supabaseUrl: supabaseUrl ?? this.supabaseUrl,
@@ -91,6 +98,7 @@ class ConfigModel {
       senhaPedro: senhaPedro ?? this.senhaPedro,
       senhaMariaLuiza: senhaMariaLuiza ?? this.senhaMariaLuiza,
       notasMes: notasMes ?? this.notasMes,
+      tema: tema ?? this.tema,
     );
   }
 }

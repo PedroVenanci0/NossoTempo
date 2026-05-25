@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     if (_carregando) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: CoresProjeto.fundoCaderno,
         body: Center(
           child: CircularProgressIndicator(color: CoresProjeto.destaqueAtivo),
@@ -141,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Divider(color: CoresProjeto.bordaCinza, thickness: 1.0),
+                Divider(color: CoresProjeto.bordaCinza, thickness: 1.0),
                 const SizedBox(height: 24),
 
                 // Seletor de Usuário com fotos de perfil
@@ -178,10 +178,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     hintText: 'Digite sua senha',
                     hintStyle: CoresProjeto.estiloTextoMono(12, cor: CoresProjeto.textoClaro.withOpacity(0.6)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    enabledBorder: const OutlineInputBorder(
+                    enabledBorder: OutlineInputBorder(
                       borderSide: BorderSide(color: CoresProjeto.bordaCinza, width: 1.0),
                     ),
-                    focusedBorder: const OutlineInputBorder(
+                    focusedBorder: OutlineInputBorder(
                       borderSide: BorderSide(color: CoresProjeto.destaqueAtivo, width: 1.5),
                     ),
                   ),
