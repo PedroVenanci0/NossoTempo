@@ -16,8 +16,8 @@ class ConfigModel {
   final String notasMes;
 
   ConfigModel({
-    this.supabaseUrl = '',
-    this.supabaseAnonKey = '',
+    this.supabaseUrl = 'https://opajjscefgseyafzxgxv.supabase.co',
+    this.supabaseAnonKey = 'sb_publishable_r9s21oUWOevzyBeeteNqDA_cmb-AkxA',
     this.githubToken = '',
     this.githubRepo = '',
     this.ramo = 'main',
@@ -52,9 +52,11 @@ class ConfigModel {
   }
 
   factory ConfigModel.fromJson(Map<String, dynamic> json) {
+    final url = json['supabaseUrl']?.toString() ?? '';
+    final key = json['supabaseAnonKey']?.toString() ?? '';
     return ConfigModel(
-      supabaseUrl: json['supabaseUrl'] ?? '',
-      supabaseAnonKey: json['supabaseAnonKey'] ?? '',
+      supabaseUrl: url.isNotEmpty ? url : 'https://opajjscefgseyafzxgxv.supabase.co',
+      supabaseAnonKey: key.isNotEmpty ? key : 'sb_publishable_r9s21oUWOevzyBeeteNqDA_cmb-AkxA',
       githubToken: json['githubToken'] ?? '',
       githubRepo: json['githubRepo'] ?? '',
       ramo: json['ramo'] ?? 'main',
