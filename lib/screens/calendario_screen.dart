@@ -272,8 +272,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   // Filtra eventos do dia que o usuário logado pode ver
   List<EventoModel> _obterEventosDoDia(DateTime data) {
     final evs = _eventos.where((e) {
-      // Ignora tarefas rápidas (que têm a categoria 'Tarefa') na exibição do grid central
-      if (e.categoria == 'Tarefa') return false;
+      // Ignora tarefas rápidas (que têm a categoria 'Tarefa') e notas (categoria 'Nota') na exibição do grid central
+      if (e.categoria == 'Tarefa' || e.categoria == 'Nota') return false;
 
       final mesmaData = e.data.year == data.year && e.data.month == data.month && e.data.day == data.day;
       if (!mesmaData) return false;
