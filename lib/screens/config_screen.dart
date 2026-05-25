@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/config_model.dart';
 import '../services/storage_service.dart';
-import '../services/supabase_service.dart';
 import '../utils/cores_projeto.dart';
 
 class ConfigScreen extends StatefulWidget {
@@ -13,13 +12,8 @@ class ConfigScreen extends StatefulWidget {
 
 class _ConfigScreenState extends State<ConfigScreen> {
   final StorageService _storageService = StorageService();
-  final SupabaseService _supabaseService = SupabaseService();
 
   final _formKey = GlobalKey<FormState>();
-
-  // Supabase
-  final _supabaseUrlController = TextEditingController();
-  final _supabaseKeyController = TextEditingController();
 
   // Senhas
   final _senhaPedroController = TextEditingController();
@@ -42,8 +36,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
     final config = await _storageService.carregarConfig();
     setState(() {
       _config = config;
-      _supabaseUrlController.text = config.supabaseUrl;
-      _supabaseKeyController.text = config.supabaseAnonKey;
       _senhaPedroController.text = config.senhaPedro;
       _senhaMariaLuizaController.text = config.senhaMariaLuiza;
       _temaSelecionado = config.tema;
@@ -59,19 +51,12 @@ class _ConfigScreenState extends State<ConfigScreen> {
     });
 
     final novaConfig = _config.copyWith(
-      supabaseUrl: _supabaseUrlController.text.trim(),
-      supabaseAnonKey: _supabaseKeyController.text.trim(),
       senhaPedro: _senhaPedroController.text.trim(),
       senhaMariaLuiza: _senhaMariaLuizaController.text.trim(),
       tema: _temaSelecionado,
     );
 
     await _storageService.salvarConfig(novaConfig);
-
-    // Inicializa Supabase com as novas credenciais (se ainda nao foi).
-    if (novaConfig.estaConfiguradoSupabase) {
-      await SupabaseService.inicializar(novaConfig);
-    }
 
     if (!mounted) return;
 
@@ -98,6 +83,44 @@ class _ConfigScreenState extends State<ConfigScreen> {
     await _storageService.salvarConfig(novaConfig);
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    }
+  }
+
+  // Retorna o ícone e a cor de preview de cada tema
+  Map<String, dynamic> _obterInfoTema(String tema) {
+    switch (tema) {
+      case 'escuro':
+        return {
+          'icone': Icons.dark_mode_outlined,
+          'cor': const Color(0xFF161618),
+          'corTexto': const Color(0xFFE5E5EA),
+          'nome': 'MODO ESCURO',
+          'desc': 'Fundo preto com texto claro — elegante e suave para a noite.',
+        };
+      case 'starwars':
+        return {
+          'icone': Icons.rocket_launch_outlined,
+          'cor': const Color(0xFF0A0A14),
+          'corTexto': const Color(0xFFFFC500),
+          'nome': 'STAR WARS',
+          'desc': 'Que a Força esteja com vocês! Amarelo galáctico no fundo estelar.',
+        };
+      case 'abelha':
+        return {
+          'icone': Icons.emoji_nature_outlined,
+          'cor': const Color(0xFFFFF9E0),
+          'corTexto': const Color(0xFF8B6914),
+          'nome': 'ABELHA 🐝',
+          'desc': 'Doce como mel! Tons de amarelo e preto com ícones de abelha.',
+        };
+      default:
+        return {
+          'icone': Icons.wb_sunny_outlined,
+          'cor': const Color(0xFFFAF8F5),
+          'corTexto': const Color(0xFF4A4944),
+          'nome': 'PADRÃO (CREME)',
+          'desc': 'O caderno clássico — tons suaves de creme e cinza.',
+        };
     }
   }
 
@@ -146,36 +169,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ============== SECAO SUPABASE ==============
-                  _buildCabecalhoSecao('BANCO DE DADOS (SUPABASE)', Icons.storage_outlined),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Cole a URL e a Anon Key do projeto do Supabase. Sem isso, o app roda apenas no cache local deste navegador.',
-                    style: CoresProjeto.estiloTextoCorpo(12, cor: CoresProjeto.textoClaro),
-                  ),
-                  const SizedBox(height: 24),
-
-                  _buildInputLabel('SUPABASE PROJECT URL'),
-                  TextFormField(
-                    controller: _supabaseUrlController,
-                    style: CoresProjeto.estiloTextoMono(13),
-                    cursorColor: CoresProjeto.textoEscuro,
-                    decoration: _buildInputDecoration('https://xxx.supabase.co'),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildInputLabel('SUPABASE ANON / PUBLISHABLE KEY'),
-                  TextFormField(
-                    controller: _supabaseKeyController,
-                    style: CoresProjeto.estiloTextoMono(13),
-                    cursorColor: CoresProjeto.textoEscuro,
-                    decoration: _buildInputDecoration('sb_publishable_... ou eyJ...'),
-                  ),
-
-                  const SizedBox(height: 32),
-                  Divider(color: CoresProjeto.bordaCinza, thickness: 1.0),
-                  const SizedBox(height: 24),
-
                   // ============== SECAO SELECAO DE TEMA ==============
                   _buildCabecalhoSecao('TEMA DO APLICATIVO', Icons.palette_outlined),
                   const SizedBox(height: 8),
@@ -184,45 +177,15 @@ class _ConfigScreenState extends State<ConfigScreen> {
                     style: CoresProjeto.estiloTextoCorpo(12, cor: CoresProjeto.textoClaro),
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: CoresProjeto.bordaCinza, width: 1.0),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _temaSelecionado,
-                        dropdownColor: CoresProjeto.fundoCaderno,
-                        style: CoresProjeto.estiloTextoMono(13, cor: CoresProjeto.textoEscuro),
-                        iconEnabledColor: CoresProjeto.textoEscuro,
-                        onChanged: (String? novoTema) {
-                          if (novoTema != null) {
-                            setState(() {
-                              _temaSelecionado = novoTema;
-                            });
-                          }
-                        },
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'padrao',
-                            child: Text('PADRÃO (CREME)'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'escuro',
-                            child: Text('ESCURO (PRETO)'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'starwars',
-                            child: Text('STAR WARS'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'abelha',
-                            child: Text('ABELHA 🐝'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+
+                  // Cards visuais de tema
+                  _buildCardTema('padrao'),
+                  const SizedBox(height: 10),
+                  _buildCardTema('escuro'),
+                  const SizedBox(height: 10),
+                  _buildCardTema('starwars'),
+                  const SizedBox(height: 10),
+                  _buildCardTema('abelha'),
 
                   const SizedBox(height: 32),
                   Divider(color: CoresProjeto.bordaCinza, thickness: 1.0),
@@ -312,6 +275,102 @@ class _ConfigScreenState extends State<ConfigScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardTema(String tema) {
+    final info = _obterInfoTema(tema);
+    final selecionado = _temaSelecionado == tema;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _temaSelecionado = tema;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: info['cor'] as Color,
+          border: Border.all(
+            color: selecionado
+                ? (info['corTexto'] as Color)
+                : CoresProjeto.bordaCinza,
+            width: selecionado ? 2.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Ícone do tema
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: (info['corTexto'] as Color).withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                info['icone'] as IconData,
+                color: info['corTexto'] as Color,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Textos
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    info['nome'] as String,
+                    style: CoresProjeto.estiloTextoMono(
+                      12,
+                      bold: true,
+                      cor: info['corTexto'] as Color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    info['desc'] as String,
+                    style: CoresProjeto.estiloTextoCorpo(
+                      11,
+                      cor: (info['corTexto'] as Color).withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Indicador de selecionado
+            if (selecionado)
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: info['corTexto'] as Color,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check,
+                  color: info['cor'] as Color,
+                  size: 16,
+                ),
+              )
+            else
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: (info['corTexto'] as Color).withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
